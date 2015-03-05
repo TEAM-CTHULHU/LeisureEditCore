@@ -1,0 +1,22 @@
+#editor {
+    white-space: pre-line;
+}
+
+[data-headline] {
+    border: solid black 1px;
+}
+
+.blockLabel {
+    padding: 0.1em 0.3em;
+    border: solid darkgray 2px;
+    border-radius: 10px;
+    background: lightgray;
+    display: inline-block;
+}
+
+#status-holder {
+    position: absolute;
+    bottom: 2px;
+    width: calc(100% - 20px);
+    border: solid black 2px;
+}
