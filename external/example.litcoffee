@@ -16,7 +16,6 @@
       constructor: ->
         super()
         @rerender = {}
-        @clearChanges()
       moved: (editor)->
         {blockId, offset} = editor.getBlockLocation()
         if blockId
@@ -33,7 +32,7 @@
           cur = curBlock.next
       parseBlocks: (text)-> orgDoc parseOrgMode text.replace /\r\n/g, '\n'
       newBlocks: (blocks)->
-        super.newBlocks blocks
+        super blocks
         @findParents()
         @findChildren()
       isMergeable: (newBlock, neighbor, oldBlock)->
