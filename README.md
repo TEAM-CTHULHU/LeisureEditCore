@@ -1,6 +1,6 @@
 EditCore
 ========
-Copyright (C) 2015, Bill Burdick, TEAM CTHULHU
+Copyright (C) 2015, Bill Burdick, Roy Riggs, TEAM CTHULHU
 
 Licensed with ZLIB license (see "License", below).
 

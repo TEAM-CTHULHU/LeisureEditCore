@@ -1,6 +1,6 @@
 DOMCursor
 =========
-Copyright (C) 2014, Bill Burdick, TEAM CTHULHU
+Copyright (C) 2014, Bill Burdick, Roy Riggs, TEAM CTHULHU
 
 Licensed with ZLIB license (see "License", below).
 
