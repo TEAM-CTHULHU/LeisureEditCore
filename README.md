@@ -677,6 +677,7 @@ adapted from Vega on [StackOverflow](http://stackoverflow.com/a/13127566/1026782
 
 Utilities
 =========
+
     shiftKey = (c)-> 15 < c < 19
 
     modifiers = (e, c)->
@@ -700,6 +701,7 @@ Utilities
 
 Exports
 =======
+
     root = EditCore
     root.BasicOptions = BasicOptions
     root.defaultBindings = defaultBindings
