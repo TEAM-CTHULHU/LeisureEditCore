@@ -1268,7 +1268,7 @@ MeatParser = (function() {
     }
   };
 
-  MeatParser.prototype.parse = function(meat, offset, rest, singleLine, level) {
+  MeatParser.prototype.parse = function(meat, offset, rest, singleLine) {
     var m, meatText, newline;
     this.meat = meat;
     this.rest = rest;
