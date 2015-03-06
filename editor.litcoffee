@@ -1,5 +1,9 @@
 EditCore
 ========
+Copyright (C) 2015, Bill Burdick, TEAM CTHULHU
+
+Licensed with ZLIB license (see "License", below).
+
 Welcome to [EditCore](https://github.com/zot/EditCore), a tiny library
 for HTML5 that you can use to make your own editors.  This is
 Leisure's editing core, extracted out into a small HTML5 library.
@@ -93,11 +97,9 @@ Building
 If you modify EditCore and want to build it, you can use the Cakefile.  It needs the
 `which` npm package (`npm install which`).
 
-Copyright and license
+License
 =====================
-Copyright (C) 2015, Bill Burdick, Tiny Concepts
-
-(licensed with ZLIB license)
+Licensed with ZLIB license.
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages

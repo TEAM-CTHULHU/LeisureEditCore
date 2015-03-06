@@ -1,5 +1,8 @@
 DOMCursor
 =========
+Copyright (C) 2014, Bill Burdick, TEAM CTHULHU
+
+Licensed with ZLIB license (see "License", below).
 
 Filtered cursoring on DOM trees.  DOMCursors can move forwards or backwards, by node or by character, with settable filters that can seamlessly skip over parts of the DOM.
 
@@ -59,7 +62,30 @@ A DOMCursor has a node, a position, a filter, and a type.
   - 'quit': to end to make @next() or @prev() return an empty DOMCursor
 - type: 'empty', 'text', or 'element'
 
-The class...
+License
+=====================
+Licensed with ZLIB license.
+
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+claim that you wrote the original software. If you use this software
+in a product, an acknowledgment in the product documentation would be
+appreciated but is not required.
+
+2. Altered source versions must be plainly marked as such, and must not be
+misrepresented as being the original software.
+
+3. This notice may not be removed or altered from any source distribution.
+
+The DOMCursor class...
+======================
 
     class DOMCursor
       constructor: (@node, @pos, filter)->
