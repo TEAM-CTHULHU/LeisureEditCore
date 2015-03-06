@@ -88,11 +88,6 @@ Packages we use
 - [DOMCursor](https://github.com/zot/DOMCursor), for finding text locations in DOM trees
 - [adiff](https://github.com/dominictarr/adiff), for finding differences between JS arrays
 
-Building
-========
-If you modify EditCore and want to build it, you can use the Cakefile.  It needs the
-`which` npm package (`npm install which`).
-
 Copyright and license
 =====================
 Copyright (C) 2015, Bill Burdick, Tiny Concepts

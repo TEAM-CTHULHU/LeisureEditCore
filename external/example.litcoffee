@@ -10,11 +10,12 @@
     {
       last,
       BasicOptions,
-    } = DecentEditor = window.DecentEditor
+    } = EditCore = window.EditCore
 
     class OrgEditing extends BasicOptions
       constructor: ->
         super()
+        @rerender = {}
         @clearChanges()
       moved: (editor)->
         {blockId, offset} = editor.getBlockLocation()
@@ -30,21 +31,12 @@
             $("#status").html "Line: #{pos.line}, col: #{pos.column}"
             break
           cur = curBlock.next
-      newChanges: -> this
-      clearChanges: ->
-        @updates = null
-        @removes = null
-        @rerender = {}
-        @parents = null
-        @newParents = null
       parseBlocks: (text)-> orgDoc parseOrgMode text.replace /\r\n/g, '\n'
-      load: (el, text)->
-        idCounter = 0
-        @newBlocks @parseBlocks text
+      newBlocks: (blocks)->
+        super.newBlocks blocks
         @findParents()
         @findChildren()
-        el.html @renderBlock @blocks[@first]
-      isMergeable: (newBlock, oldBlock, neighbor)->
+      isMergeable: (newBlock, neighbor, oldBlock)->
         newBlock.type == 'chunk' && oldBlock.type != 'chunk' && neighbor?.type == 'chunk'
       edit: (func)->
         {@removes, @updates} = @changes = func()
@@ -63,7 +55,11 @@
           @setUpdateRerender block
         for id of @rerender
           @rerenderBlock @blocks[id]
-        @clearChanges()
+        @updates = null
+        @removes = null
+        @rerender = {}
+        @parents = null
+        @newParents = null
       setRemoveRerender: (id)->
         while @removes[id]
           id = @parents[id]
@@ -140,6 +136,6 @@
 
     $(document).ready ->
       #debugger
-      editor = new DecentEditor $("#editor"), new OrgEditing()
+      editor = new EditCore $("#editor"), new OrgEditing()
       editor.loadURL "example.lorg"
       window.ED = editor
