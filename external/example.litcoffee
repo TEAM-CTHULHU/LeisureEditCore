@@ -65,9 +65,15 @@
       setUpdateRerender: (newBlock)->
         oldBlock = @getOldBlock newBlock._id
         if !oldBlock then @rerender[newBlock._id] = true
-        else if (np = @parents[newBlock._id]) != (op = @oldParents[oldBlock._id])
-          @setUpdateRerender @blocks[np]
-        else @rerender[newBlock._id] = true
+        else
+          np = @parents[newBlock._id]
+          op = @oldParents[oldBlock._id]
+          if np == op then @rerender[newBlock._id] = true
+          else
+            $("##{newBlock._id}").remove()
+            if np then @rerender[np] = true
+            else @rerender[newBlock._id] = true
+            if op then @rerender[op] = true
       getChangedBlock: (id)-> @changes.getChangedBlock id
       getOldBlock: (id)-> @changes.getOldBlock id
       findParents: ->
@@ -75,38 +81,46 @@
         @findStructure @first, (parent, child)-> parents[child._id] = parent?._id
       findChildren: ->
         children = @children = {}
-        @findStructure @first, (parent, child)-> if parent
-          childList = (children[parent._id] ? (children[parent._id] = []))
+        @findStructure @first, (parent, child)=>
+          parentId = if parent then parent._id else 'TOP'
+          childList = (children[parentId] ? (children[parentId] = []))
+          prev = @getBlock last childList
           childList.push child._id
-      findStructure: (first, func)->
-        original = @blocks[first]
+          if prev
+            child.previousSibling = prev._id
+            prev.nextSibling = child._id
+      findStructure: (blockId, func, all)->
+        original = @blocks[blockId]
         if original.type == 'headline'
           ancestors = []
-          while first && block = @blocks[first]
+          while blockId && block = @blocks[blockId]
             parent = last ancestors
             if block.type == 'headline'
-              if block != original && block.level <= original.level ? 0 then break
-              if block.level == parent?.level then ancestors.pop()
-              if !parent || block.level >= parent.level then ancestors.push block
+              if !parent || block.level > parent.level then ancestors.push block
               else
-                while block.level < parent.level
+                while block.level <= parent.level
                   ancestors.pop()
                   parent = last ancestors
                 ancestors.push block
               parent = if ancestors.length > 1 then ancestors[ancestors.length - 2]
             func parent, block
-            first = block.next
+            blockId = block.next
+        else func null, original
       rerenderBlock: (block)->
-        if (node = $("##{block._id}")).length
-          node.replaceWith @renderBlock block
-        else if block.next && (next = $("##{block.next}")).length
-          next.before @renderBlock block
-        else if block.prev && (prev = $("##{block.prev}")).length
-          prev.after @renderBlock block
+        if block
+          [html] = @renderBlock block
+          if (node = $("##{block._id}")).length
+            node.replaceWith html
+          else if block.nextSibling && (next = $("##{block.nextSibling}")).length
+            next.before html
+          else if block.previousSibling && (prev = $("##{block.previousSibling}")).length
+            prev.after html
+          else $(@editor.node).append html
       renderBlock: (block)->
-        if block.type == 'headline'
-          "<div #{blockAttrs block}>#{blockLabel block}#{contentSpan block.text, 'text'}#{(@renderBlock @blocks[childId], null, true for childId in @children[block._id]).join ''}</div>"
+        html = if block.type == 'headline'
+          "<div #{blockAttrs block}>#{blockLabel block}#{contentSpan block.text, 'text'}#{(@renderBlock(@blocks[childId])[0] for childId in @children[block._id] ? []).join ''}</div>"
         else "<span #{blockAttrs block}>#{blockLabel block}#{escapeHtml block.text}</span>"
+        [html, block.nextSibling]
 
     blockLabel = (block)->
       "<span class='blockLabel' contenteditable='false' data-noncontent>[#{block.type}]</span>"

@@ -4,6 +4,7 @@
 
 [data-headline] {
     border: solid black 1px;
+    padding: 3px;
 }
 
 .blockLabel {

@@ -65,13 +65,14 @@ Hooks you must define for BasicOptions objects
 ----------------------------------------------
 Here are the hook methods you need to provide:
 
-* `parseBlocks(text)`: parse text into blocks
-* `renderBlock(block)`: render a block (and potentially its children) into HTML.
+* `parseBlocks(text)`: parse text into array of blocks -- DO NOT assign _id, prev, or next!
+* `renderBlock(block) -> [html, next]`: render a block (and potentially its children) and return the HTML and the next blockId if there is one
   Block DOM (DOM for a block) must be a single element with the same id as the block.
   Block DOM may contain nested block DOM.
 * `isMergeable(newBlock, neighbor, oldBlock)`: return whether it is desirable to
   merge newBlock and neighbor
 * `edit(func)`: This must run func which performs the actual editing and returns {removes: (map of id->true), updates: (map of id->block)}
+* `newBlocks(blockList)`: override this if you need to link up the blocks, etc., like so that `renderBlock()` can return the proper next id, for instance.
 
 After that, you must render the changes into HTML and replace them into the element.
 
@@ -206,10 +207,11 @@ EditCore class
           offset: @getTextPosition holder, s.anchorNode, s.anchorOffset
         else {}
       getBlock: (id)->
-        bl = {}
-        for k,v of @options.getBlock id
-          bl[k] = v
-        bl
+        if block = @options.getBlock id
+          bl = {}
+          for k,v of block
+            bl[k] = v
+          bl
       domCursor: (node, pos)->
         if node instanceof jQuery
           node = node[0]
@@ -528,13 +530,19 @@ EditCore uses this to manage block changes for an edit.  The user may replace a 
       insertBlock: (newBlock, prevId)->
         if !newBlock._id then newBlock._id = @options.newId()
         @updates[newBlock._id] = newBlock
-        if !prevId
-          newBlock.next = @first
+        if prevId
+          newBlock.prev = prevId
+          if prev = @getUpdateBlock prevId
+            nextId = prev.next
+            prev.next = newBlock._id
+            @updates[prev._id] = prev
+        else
+          nextId = @first
           @first = newBlock._id
-          if next = getChangedBlock @first
-            if !@updates[next._id]
-              next = @updates[next._id] = @getCopy next._id
-            next.prev = newBlock._id
+        if newBlock.next = nextId
+          next = @getUpdateBlock nextId
+          next.prev = newBlock._id
+          @updates[next._id] = next
         newBlock._id
       removeBlock: (block)->
         id = block._id
@@ -572,11 +580,7 @@ EditCore uses this to manage block changes for an edit.  The user may replace a 
           @saveBlock id
           @options.blocks[id] = block
         @options.first = @first
-      saveBlock: (id)->
-        if @options.getBlock(id)?
-          @oldBlocks[id] = @options.getBlock(id)
-          true
-        false
+      saveBlock: (id)-> @oldBlocks[id] = @options.getBlock(id)
 
 BasicOptions class
 ==================
@@ -615,7 +619,13 @@ BasicOptions is an opinionated default options class that encourages using a "da
       load: (el, text)->
         idCounter = 0
         @newBlocks @parseBlocks text
-        el.html @renderBlock @blocks[@first]
+        el.html @renderBlocks()
+      renderBlocks: ->
+        result = ''
+        next = @first
+        while next && [html, next] = @renderBlock @getBlock next
+          result += html
+        result
       isMergeable: (newBlock, neighbor, oldBlock)-> throw new Error "options.isMergeable(newBlock, oldBlock, neighbor) is not implemented"
       parseBlocks: (text)-> throw new Error "options.parseBlocks(text) is not implemented"
       renderBlock: (block)-> throw new Error "options.renderBlock(block) is not implemented"

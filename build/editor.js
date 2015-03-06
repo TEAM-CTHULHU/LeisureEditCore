@@ -114,14 +114,15 @@ EditCore = (function() {
   };
 
   EditCore.prototype.getBlock = function(id) {
-    var bl, k, v, _ref;
-    bl = {};
-    _ref = this.options.getBlock(id);
-    for (k in _ref) {
-      v = _ref[k];
-      bl[k] = v;
+    var bl, block, k, v;
+    if (block = this.options.getBlock(id)) {
+      bl = {};
+      for (k in block) {
+        v = block[k];
+        bl[k] = v;
+      }
+      return bl;
     }
-    return bl;
   };
 
   EditCore.prototype.domCursor = function(node, pos) {
@@ -650,20 +651,26 @@ Changes = (function() {
   };
 
   Changes.prototype.insertBlock = function(newBlock, prevId) {
-    var next;
+    var next, nextId, prev;
     if (!newBlock._id) {
       newBlock._id = this.options.newId();
     }
     this.updates[newBlock._id] = newBlock;
-    if (!prevId) {
-      newBlock.next = this.first;
-      this.first = newBlock._id;
-      if (next = getChangedBlock(this.first)) {
-        if (!this.updates[next._id]) {
-          next = this.updates[next._id] = this.getCopy(next._id);
-        }
-        next.prev = newBlock._id;
+    if (prevId) {
+      newBlock.prev = prevId;
+      if (prev = this.getUpdateBlock(prevId)) {
+        nextId = prev.next;
+        prev.next = newBlock._id;
+        this.updates[prev._id] = prev;
       }
+    } else {
+      nextId = this.first;
+      this.first = newBlock._id;
+    }
+    if (newBlock.next = nextId) {
+      next = this.getUpdateBlock(nextId);
+      next.prev = newBlock._id;
+      this.updates[next._id] = next;
     }
     return newBlock._id;
   };
@@ -732,11 +739,7 @@ Changes = (function() {
   };
 
   Changes.prototype.saveBlock = function(id) {
-    if (this.options.getBlock(id) != null) {
-      this.oldBlocks[id] = this.options.getBlock(id);
-      true;
-    }
-    return false;
+    return this.oldBlocks[id] = this.options.getBlock(id);
   };
 
   return Changes;
@@ -813,7 +816,17 @@ BasicOptions = (function() {
     var idCounter;
     idCounter = 0;
     this.newBlocks(this.parseBlocks(text));
-    return el.html(this.renderBlock(this.blocks[this.first]));
+    return el.html(this.renderBlocks());
+  };
+
+  BasicOptions.prototype.renderBlocks = function() {
+    var html, next, result, _ref;
+    result = '';
+    next = this.first;
+    while (next && (_ref = this.renderBlock(this.getBlock(next)), html = _ref[0], next = _ref[1], _ref)) {
+      result += html;
+    }
+    return result;
   };
 
   BasicOptions.prototype.isMergeable = function(newBlock, neighbor, oldBlock) {

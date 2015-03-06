@@ -1228,7 +1228,7 @@ fullLine = function(match, text) {
 };
 
 parseOrgChunk = function(text, offset, level) {
-  var line, m, meat, simple, _ref1;
+  var l, line, m, meat, meatLen, simple, _ref1;
   if (!text) {
     return [null, text];
   } else {
@@ -1242,8 +1242,13 @@ parseOrgChunk = function(text, offset, level) {
         return parseHeadline(line, offset, m[HL_LEVEL].length, m[HL_TODO], m[HL_PRIORITY], m[HL_TAGS], text.substring(line.length), offset + text.length);
       }
     } else {
-      meat = text.substring(0, m && !simple ? m.index : text.length);
-      return parseMeat(meat, offset, text.substring(meat.length));
+      if ((m != null ? m.index : void 0) === 0 && simple && (l = text.indexOf('\n')) > -1 && (m = text.substring(l).match(headlineRE))) {
+        meatLen = m.index + l;
+      } else {
+        meatLen = m && (m.index > 0 || !simple) ? m.index : text.length;
+      }
+      meat = text.substring(0, meatLen);
+      return parseMeat(meat, offset, text.substring(meatLen), false);
     }
   }
 };
@@ -1263,7 +1268,7 @@ MeatParser = (function() {
     }
   };
 
-  MeatParser.prototype.parse = function(meat, offset, rest, singleLine) {
+  MeatParser.prototype.parse = function(meat, offset, rest, singleLine, level) {
     var m, meatText, newline;
     this.meat = meat;
     this.rest = rest;

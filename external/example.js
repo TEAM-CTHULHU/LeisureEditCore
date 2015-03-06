@@ -98,10 +98,22 @@ OrgEditing = (function(_super) {
     oldBlock = this.getOldBlock(newBlock._id);
     if (!oldBlock) {
       return this.rerender[newBlock._id] = true;
-    } else if ((np = this.parents[newBlock._id]) !== (op = this.oldParents[oldBlock._id])) {
-      return this.setUpdateRerender(this.blocks[np]);
     } else {
-      return this.rerender[newBlock._id] = true;
+      np = this.parents[newBlock._id];
+      op = this.oldParents[oldBlock._id];
+      if (np === op) {
+        return this.rerender[newBlock._id] = true;
+      } else {
+        $("#" + newBlock._id).remove();
+        if (np) {
+          this.rerender[np] = true;
+        } else {
+          this.rerender[newBlock._id] = true;
+        }
+        if (op) {
+          return this.rerender[op] = true;
+        }
+      }
     }
   };
 
@@ -124,34 +136,34 @@ OrgEditing = (function(_super) {
   OrgEditing.prototype.findChildren = function() {
     var children;
     children = this.children = {};
-    return this.findStructure(this.first, function(parent, child) {
-      var childList, _ref2;
-      if (parent) {
-        childList = (_ref2 = children[parent._id]) != null ? _ref2 : (children[parent._id] = []);
-        return childList.push(child._id);
-      }
-    });
+    return this.findStructure(this.first, (function(_this) {
+      return function(parent, child) {
+        var childList, parentId, prev, _ref2;
+        parentId = parent ? parent._id : 'TOP';
+        childList = (_ref2 = children[parentId]) != null ? _ref2 : (children[parentId] = []);
+        prev = _this.getBlock(last(childList));
+        childList.push(child._id);
+        if (prev) {
+          child.previousSibling = prev._id;
+          return prev.nextSibling = child._id;
+        }
+      };
+    })(this));
   };
 
-  OrgEditing.prototype.findStructure = function(first, func) {
-    var ancestors, block, original, parent, _ref2, _results;
-    original = this.blocks[first];
+  OrgEditing.prototype.findStructure = function(blockId, func, all) {
+    var ancestors, block, original, parent, _results;
+    original = this.blocks[blockId];
     if (original.type === 'headline') {
       ancestors = [];
       _results = [];
-      while (first && (block = this.blocks[first])) {
+      while (blockId && (block = this.blocks[blockId])) {
         parent = last(ancestors);
         if (block.type === 'headline') {
-          if ((_ref2 = block !== original && block.level <= original.level) != null ? _ref2 : 0) {
-            break;
-          }
-          if (block.level === (parent != null ? parent.level : void 0)) {
-            ancestors.pop();
-          }
-          if (!parent || block.level >= parent.level) {
+          if (!parent || block.level > parent.level) {
             ancestors.push(block);
           } else {
-            while (block.level < parent.level) {
+            while (block.level <= parent.level) {
               ancestors.pop();
               parent = last(ancestors);
             }
@@ -160,39 +172,43 @@ OrgEditing = (function(_super) {
           parent = ancestors.length > 1 ? ancestors[ancestors.length - 2] : void 0;
         }
         func(parent, block);
-        _results.push(first = block.next);
+        _results.push(blockId = block.next);
       }
       return _results;
+    } else {
+      return func(null, original);
     }
   };
 
   OrgEditing.prototype.rerenderBlock = function(block) {
-    var next, node, prev;
-    if ((node = $("#" + block._id)).length) {
-      return node.replaceWith(this.renderBlock(block));
-    } else if (block.next && (next = $("#" + block.next)).length) {
-      return next.before(this.renderBlock(block));
-    } else if (block.prev && (prev = $("#" + block.prev)).length) {
-      return prev.after(this.renderBlock(block));
+    var html, next, node, prev;
+    if (block) {
+      html = this.renderBlock(block)[0];
+      if ((node = $("#" + block._id)).length) {
+        return node.replaceWith(html);
+      } else if (block.nextSibling && (next = $("#" + block.nextSibling)).length) {
+        return next.before(html);
+      } else if (block.previousSibling && (prev = $("#" + block.previousSibling)).length) {
+        return prev.after(html);
+      } else {
+        return $(this.editor.node).append(html);
+      }
     }
   };
 
   OrgEditing.prototype.renderBlock = function(block) {
-    var childId;
-    if (block.type === 'headline') {
-      return "<div " + (blockAttrs(block)) + ">" + (blockLabel(block)) + (contentSpan(block.text, 'text')) + (((function() {
-        var _i, _len, _ref2, _results;
-        _ref2 = this.children[block._id];
-        _results = [];
-        for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
-          childId = _ref2[_i];
-          _results.push(this.renderBlock(this.blocks[childId], null, true));
-        }
-        return _results;
-      }).call(this)).join('')) + "</div>";
-    } else {
-      return "<span " + (blockAttrs(block)) + ">" + (blockLabel(block)) + (escapeHtml(block.text)) + "</span>";
-    }
+    var childId, html;
+    html = block.type === 'headline' ? "<div " + (blockAttrs(block)) + ">" + (blockLabel(block)) + (contentSpan(block.text, 'text')) + (((function() {
+      var _i, _len, _ref2, _ref3, _results;
+      _ref3 = (_ref2 = this.children[block._id]) != null ? _ref2 : [];
+      _results = [];
+      for (_i = 0, _len = _ref3.length; _i < _len; _i++) {
+        childId = _ref3[_i];
+        _results.push(this.renderBlock(this.blocks[childId])[0]);
+      }
+      return _results;
+    }).call(this)).join('')) + "</div>" : "<span " + (blockAttrs(block)) + ">" + (blockLabel(block)) + (escapeHtml(block.text)) + "</span>";
+    return [html, block.nextSibling];
   };
 
   return OrgEditing;
