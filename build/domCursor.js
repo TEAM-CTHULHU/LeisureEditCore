@@ -1003,3 +1003,5 @@ DOMCursor.differentLines = differentLines;
 DOMCursor.debug = false;
 
 this.DOMCursor = DOMCursor;
+
+//# sourceMappingURL=domCursor.map

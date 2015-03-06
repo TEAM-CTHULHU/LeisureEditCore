@@ -25,9 +25,17 @@ reset = '\x1b[0m'
 red = '\x1b[0;31m'
 
 task 'build', 'compile source', (options) ->
-  build false, (-> log ":-)", green), useMapping: useMapping = options.map
+  build false, (-> log ":-)", green)
   cp 'adiff.js', 'build/adiff.js'
   cp 'editor.litcoffee', 'README.md'
+  for f in files
+    cp f, "build/#{f}"
+  files = [
+    'external/docOrg.litcoffee',
+    'external/org.coffee',
+    'external/example.litcoffee',
+  ]
+  build false, (-> log ":-)", green), 'external'
 
 # ## *log* 
 # 
@@ -63,17 +71,15 @@ launch = (cmd, options=[], callback) ->
 # **and** optional function as callback
 # **then** invoke launch passing coffee command
 # **and** defaulted options to compile src to lib
-build = (watch, callback, {useMapping} = {}) ->
-  useMapping ?= false
-  
+build = (watch, callback, output = 'build') ->
   if typeof watch is 'function'
     callback = watch
     watch = false
   
   options = ['-c', '-b']
-  options.push("--map") if useMapping
+  options.push("--map")
   options.push("-o")
-  options.push 'build'
+  options.push output
   options = options.concat files
   options.unshift '-w' if watch
   launch 'coffee', options, callback

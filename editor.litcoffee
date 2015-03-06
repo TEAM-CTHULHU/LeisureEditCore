@@ -527,7 +527,7 @@ EditCore uses this to manage block changes for an edit.  The user may replace a 
       getOldBlock: (id)-> @oldBlocks[id] ? @options.getBlock id
       insertBlock: (newBlock, prevId)->
         if !newBlock._id then newBlock._id = @options.newId()
-        @updates[block._id] = newBlock
+        @updates[newBlock._id] = newBlock
         if !prevId
           newBlock.next = @first
           @first = newBlock._id
@@ -544,7 +544,6 @@ EditCore uses this to manage block changes for an edit.  The user may replace a 
         if !prev
           if @first != id then console.log "Error, removing item with non prev, but it is not the head"
           else @first = item.next
-        delete @adds[id]
         delete @updates[id]
         @removes[id] = true
         if prev && prev.next == id

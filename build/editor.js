@@ -654,7 +654,7 @@ Changes = (function() {
     if (!newBlock._id) {
       newBlock._id = this.options.newId();
     }
-    this.updates[block._id] = newBlock;
+    this.updates[newBlock._id] = newBlock;
     if (!prevId) {
       newBlock.next = this.first;
       this.first = newBlock._id;
@@ -681,7 +681,6 @@ Changes = (function() {
         this.first = item.next;
       }
     }
-    delete this.adds[id];
     delete this.updates[id];
     this.removes[id] = true;
     if (prev && prev.next === id) {
@@ -933,3 +932,5 @@ if (typeof window !== "undefined" && window !== null) {
 } else {
   module.exports = root;
 }
+
+//# sourceMappingURL=editor.map
