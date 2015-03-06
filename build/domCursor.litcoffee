@@ -100,7 +100,7 @@ The DOMCursor class...
 
       computeType: ->
         @type = if !@node then 'empty'
-        else if @node.nodeType == Node.TEXT_NODE then 'text'
+        else if @node.nodeType == @node.TEXT_NODE then 'text'
         else 'element'
         this
 
@@ -266,11 +266,11 @@ the previous text node (node, node.length)
 
 **hasAttribute** returns true if the node is an element and has the attribute
 
-      hasAttribute: (a)-> @node?.nodeType == Node.ELEMENT_NODE && @node.hasAttribute a
+      hasAttribute: (a)-> @node? && @node.nodeType == @node.ELEMENT_NODE && @node.hasAttribute a
 
 **getAttribute** returns the attribute if the node is an element and has the attribute
 
-      getAttribute: (a)-> @node?.nodeType == Node.ELEMENT_NODE && @node.getAttribute a
+      getAttribute: (a)-> @node? && @node.nodeType == @node.ELEMENT_NODE && @node.getAttribute a
 
 **filterTextNodes** adds text node filtering to the current filter; the cursor will only find text nodes
 
@@ -526,7 +526,7 @@ position if the function is 'found'
       nodeAfter: (up)->
         node = @node
         while node
-          if node.nodeType == Node.ELEMENT_NODE && !up && node.childNodes.length
+          if node.nodeType == node.ELEMENT_NODE && !up && node.childNodes.length
             return @newPos node.childNodes[0], 0
           else if node.nextSibling
             return @newPos node.nextSibling, 0
@@ -551,7 +551,7 @@ position if the function is 'found'
       nodeBefore: (up)->
         node = @node
         while node
-          if node.nodeType == Node.ELEMENT_NODE && !up && node.childNodes.length
+          if node.nodeType == node.ELEMENT_NODE && !up && node.childNodes.length
             newNode = node.childNodes[node.childNodes.length - 1]
           else if node.previousSibling then newNode = node.previousSibling
           else
@@ -649,10 +649,10 @@ These are available as properties on DOMCursor.
         type = node.nodeType
         type == 7 || # PROCESSING_INSTRUCTION
         type == 8 || # COMMENT
-        (type == Node.TEXT_NODE && (node.data == '' || isCollapsed(node.parentNode))) ||
+        (type == node.TEXT_NODE && (node.data == '' || isCollapsed(node.parentNode))) ||
         /^(script|style)$/i.test(node.nodeName) ||
-        #(type == Node.ELEMENT_NODE && (node.offsetWidth == 0 || node.offsetHeight == 0))
-        (type == Node.ELEMENT_NODE && node.offsetHeight == 0)
+        #(type == node.ELEMENT_NODE && (node.offsetWidth == 0 || node.offsetHeight == 0))
+        (type == node.ELEMENT_NODE && node.offsetHeight == 0)
 
     selectRange = (r)->
       if r

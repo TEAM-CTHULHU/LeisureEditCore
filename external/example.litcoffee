@@ -46,8 +46,8 @@
           newFirst = @getChangedBlock p
         for id of @removes
           $("##{id}").remove()
-        @changes.applyChanges()
         @oldParents = @parents
+        @changes.applyChanges()
         @findParents()
         @findChildren()
         for id, block of @updates
@@ -57,7 +57,6 @@
         @updates = null
         @removes = null
         @rerender = {}
-        @parents = null
         @newParents = null
       setRemoveRerender: (id)->
         while @removes[id]

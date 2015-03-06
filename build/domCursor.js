@@ -53,7 +53,7 @@ DOMCursor = (function() {
   }
 
   DOMCursor.prototype.computeType = function() {
-    this.type = !this.node ? 'empty' : this.node.nodeType === Node.TEXT_NODE ? 'text' : 'element';
+    this.type = !this.node ? 'empty' : this.node.nodeType === this.node.TEXT_NODE ? 'text' : 'element';
     return this;
   };
 
@@ -276,13 +276,11 @@ DOMCursor = (function() {
   };
 
   DOMCursor.prototype.hasAttribute = function(a) {
-    var _ref;
-    return ((_ref = this.node) != null ? _ref.nodeType : void 0) === Node.ELEMENT_NODE && this.node.hasAttribute(a);
+    return (this.node != null) && this.node.nodeType === this.node.ELEMENT_NODE && this.node.hasAttribute(a);
   };
 
   DOMCursor.prototype.getAttribute = function(a) {
-    var _ref;
-    return ((_ref = this.node) != null ? _ref.nodeType : void 0) === Node.ELEMENT_NODE && this.node.getAttribute(a);
+    return (this.node != null) && this.node.nodeType === this.node.ELEMENT_NODE && this.node.getAttribute(a);
   };
 
   DOMCursor.prototype.filterTextNodes = function() {
@@ -642,7 +640,7 @@ DOMCursor = (function() {
     var node;
     node = this.node;
     while (node) {
-      if (node.nodeType === Node.ELEMENT_NODE && !up && node.childNodes.length) {
+      if (node.nodeType === node.ELEMENT_NODE && !up && node.childNodes.length) {
         return this.newPos(node.childNodes[0], 0);
       } else if (node.nextSibling) {
         return this.newPos(node.nextSibling, 0);
@@ -683,7 +681,7 @@ DOMCursor = (function() {
     var newNode, node;
     node = this.node;
     while (node) {
-      if (node.nodeType === Node.ELEMENT_NODE && !up && node.childNodes.length) {
+      if (node.nodeType === node.ELEMENT_NODE && !up && node.childNodes.length) {
         newNode = node.childNodes[node.childNodes.length - 1];
       } else if (node.previousSibling) {
         newNode = node.previousSibling;
@@ -879,7 +877,7 @@ isCollapsed = function(node) {
   var type;
   if (node) {
     type = node.nodeType;
-    return type === 7 || type === 8 || (type === Node.TEXT_NODE && (node.data === '' || isCollapsed(node.parentNode))) || /^(script|style)$/i.test(node.nodeName) || (type === Node.ELEMENT_NODE && node.offsetHeight === 0);
+    return type === 7 || type === 8 || (type === node.TEXT_NODE && (node.data === '' || isCollapsed(node.parentNode))) || /^(script|style)$/i.test(node.nodeName) || (type === node.ELEMENT_NODE && node.offsetHeight === 0);
   }
 };
 

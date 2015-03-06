@@ -66,8 +66,8 @@ OrgEditing = (function(_super) {
     for (id in this.removes) {
       $("#" + id).remove();
     }
-    this.changes.applyChanges();
     this.oldParents = this.parents;
+    this.changes.applyChanges();
     this.findParents();
     this.findChildren();
     _ref3 = this.updates;
@@ -81,7 +81,6 @@ OrgEditing = (function(_super) {
     this.updates = null;
     this.removes = null;
     this.rerender = {};
-    this.parents = null;
     return this.newParents = null;
   };
 
