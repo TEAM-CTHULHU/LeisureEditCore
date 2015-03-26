@@ -1,0 +1,6 @@
+* Bugs
+** BUG adding '*' in front of a code block and then deleting it doens't convert back to code
+** BUG copy/paste lines doesn't work
+** BUG selections aren't really handled
+* Defs
+#+TODO: TODO BUG | DONE

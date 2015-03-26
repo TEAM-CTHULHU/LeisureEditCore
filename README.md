@@ -200,18 +200,18 @@ EditCore class
         @ignoreModCheck = 0
         @movementGoal = null
         @options.setEditor this
+      getCopy: (id)->
+        if old = @options.getBlock id
+          bl = {}
+          for k,v of old
+            bl[k] = v
+          bl
       getBlockLocation: ->
         s = getSelection()
         if s.type != 'None' && holder = @options.getContainer s.anchorNode
           blockId: holder.id
           offset: @getTextPosition holder, s.anchorNode, s.anchorOffset
         else {}
-      getBlock: (id)->
-        if block = @options.getBlock id
-          bl = {}
-          for k,v of block
-            bl[k] = v
-          bl
       domCursor: (node, pos)->
         if node instanceof jQuery
           node = node[0]
@@ -248,26 +248,26 @@ EditCore class
         if s.type == 'Caret'
           e.preventDefault()
           holder = @options.getContainer(s.anchorNode)
-          block = @getBlock holder.id
+          block = @getCopy holder.id
           blocks = [block]
           pos = @getTextPosition holder, s.anchorNode, s.anchorOffset
-          if pos == block.text.length && block.next then blocks.push @getBlock block.next
+          if pos == block.text.length && block.next then blocks.push @getCopy block.next
           @ignoreModCheck = @ignoreModCheck || 1
           @editBlock blocks, pos, pos, (text ? getEventChar e), pos + 1
       backspace: (event, sel, r)->
         holderId = @options.getContainer(sel.anchorNode).id
-        @currentBlockIds = [(@getBlock holderId)._id]
+        @currentBlockIds = [(@getCopy holderId)._id]
         @handleDelete event, sel, false, (text, pos)-> true
       del: (event, sel, r)->
         holderId = @options.getContainer(sel.anchorNode).id
-        @currentBlockIds = [(@getBlock holderId)._id]
+        @currentBlockIds = [(@getCopy holderId)._id]
         @handleDelete event, sel, true, (text, pos)-> true
       handleDelete: (e, s, forward, delFunc)->
         e.preventDefault()
         if s.type == 'Caret'
           c = @domCursorForCaret().firstText()
           cont = @options.getContainer(c.node)
-          block = @getBlock cont.id
+          block = @getCopy cont.id
           pos = @getTextPosition cont, c.node, c.pos
           result = delFunc block.text, pos
           blocks = []
@@ -280,13 +280,13 @@ EditCore class
               stop = pos + 1
             if pos < 0
               if blocks.prev
-                blocks.push bl = @getBlock block.prev
+                blocks.push bl = @getCopy block.prev
                 pos += bl.text.length
                 stop += bl.text.length
               else return
             blocks.push block
             if pos == block.text.length - 1 && block.text[block.text.length - 1] == '\n'
-              if block.next then blocks.push @getBlock block.next
+              if block.next then blocks.push @getCopy block.next
               else return
             @editBlock blocks, pos, stop, '', pos
       editBlock: (blocks, start, end, newContent, caret)->
@@ -296,7 +296,7 @@ EditCore class
           bl = blocks.slice()
           prev = bl[0]
           for i in [0...2]
-            if newPrev = @getBlock prev.prev
+            if newPrev = @getCopy prev.prev
               prev = newPrev
               caret += prev.text.length
           prevHolder = $("##{prev._id}")[0]
@@ -312,13 +312,14 @@ EditCore class
 Change oldBlocks into newBlocks and rerender the changed parts of the doc
 
       changeStructure: (oldBlocks, newText)->
-        @changes = new Changes @options
+        @changes = new Changes this
+        if bl = @changes.getUpdateBlock oldBlocks[0].prev
+          oldBlocks.unshift bl
+          newText = bl.text + newText
+        if bl = @changes.getUpdateBlock last(oldBlocks).next
+          oldBlocks.push bl
+          newText += bl.text
         newBlocks = @options.parseBlocks newText
-        @checkMerge(fo = oldBlocks[0], newBlocks[0], @getBlock(fo.prev), (aux)->
-          aux + newBlocks.shift().text)
-        if newBlocks.length
-          @checkMerge(lo = last(oldBlocks), last(newBlocks), @getBlock(lo.next), (aux)->
-            newBlocks.pop().text + aux)
         @remapBlocks oldBlocks, newBlocks
         @changes
 
@@ -326,13 +327,17 @@ Change oldBlocks into newBlocks and rerender the changed parts of the doc
 
 It returns the id of the old block if merge, otherwise the id of the new block.
 
-      checkMerge: (oldBlock, newBlock, neighbor, func)->
+      checkMerge: (oldBlock, newBlock, neighbor, oldBlocks, newBlocks, func)->
         if @options.isMergeable newBlock, neighbor, oldBlock
           #console.log "update item: #{auxBlock._id}"
-          neighbor.text = func neighbor.text
-          @changes.updateBlock neighbor
+          txt = func neighbor.text
+          nb = @options.parseBlocks neighbor.text
+          if nb.length == 1
+            neighbor.text = txt
+            @changes.updateBlock neighbor, true
+          else
           neighbor._id
-        else oldBlock._id
+        else newBlock._id
 
 `remapBlocks` tries to find the best fit for the new blocks using [Adiff](https://github.com/dominictarr/adiff), a diff implementation for arrays.
 
@@ -406,7 +411,7 @@ Adiff results are like splice calls [offset, count, item, item, item]
             cur = blocks[0]
             end = @options.getContainer(r.endContainer).id
             while cur && cur != end
-              if cur = (@getBlock cur).next
+              if cur = (@getCopy cur).next
                 blocks.push cur
           blocks
       setCurKeyBinding: (f)->
@@ -513,17 +518,13 @@ Changes class
 EditCore uses this to manage block changes for an edit.  The user may replace a selection with another selection, so changes could be complex.
 
     class Changes
-      constructor: (@options)->
+      constructor: (@editor)->
+        @options = @editor.options
         @first = @options.getFirst()
         @updates = {}
         @removes = {}
         @oldBlocks = {}
-      getCopy: (id)->
-        if old = @options.getBlock id
-          bl = {}
-          for k,v of old
-            bl[k] = v
-          bl
+      getCopy: (id)-> @editor.getCopy id
       getChangedBlock: (id)-> @updates[id] ? @options.getBlock id
       getUpdateBlock: (id)-> @updates[id] ? (@updates[id] = @getCopy id)
       getOldBlock: (id)-> @oldBlocks[id] ? @options.getBlock id
@@ -535,14 +536,14 @@ EditCore uses this to manage block changes for an edit.  The user may replace a 
           if prev = @getUpdateBlock prevId
             nextId = prev.next
             prev.next = newBlock._id
-            @updates[prev._id] = prev
+            @updates[prevId] = prev
         else
           nextId = @first
           @first = newBlock._id
         if newBlock.next = nextId
           next = @getUpdateBlock nextId
           next.prev = newBlock._id
-          @updates[next._id] = next
+          @updates[nextId] = next
         newBlock._id
       removeBlock: (block)->
         id = block._id

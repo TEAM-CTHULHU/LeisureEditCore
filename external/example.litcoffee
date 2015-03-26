@@ -36,7 +36,7 @@
         @findParents()
         @findChildren()
       isMergeable: (newBlock, neighbor, oldBlock)->
-        newBlock.type == 'chunk' && oldBlock.type != 'chunk' && neighbor?.type == 'chunk'
+        newBlock.type == 'chunk' && neighbor?.type == 'chunk'
       edit: (func)->
         {@removes, @updates} = @changes = func()
         newFirst = @blocks[@first]

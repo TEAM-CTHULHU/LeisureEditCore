@@ -2,7 +2,8 @@
     white-space: pre-line;
 }
 
-[data-headline] {
+[data-type] {
+    display: block;
     border: solid black 1px;
     padding: 3px;
 }
