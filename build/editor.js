@@ -555,6 +555,18 @@ EditCore = (function() {
 })();
 
 BasicOptions = (function() {
+  BasicOptions.prototype.parseBlocks = function(text) {
+    throw new Error("options.parseBlocks(text) is not implemented");
+  };
+
+  BasicOptions.prototype.renderBlock = function(block) {
+    throw new Error("options.renderBlock(block) is not implemented");
+  };
+
+  BasicOptions.prototype.edit = function(startId, count, newBlocks) {
+    throw new Error("options.edit(func) is not implemented");
+  };
+
   function BasicOptions() {
     this.blocks = {};
     this.first = null;
@@ -666,18 +678,6 @@ BasicOptions = (function() {
       result += html;
     }
     return result;
-  };
-
-  BasicOptions.prototype.parseBlocks = function(text) {
-    throw new Error("options.parseBlocks(text) is not implemented");
-  };
-
-  BasicOptions.prototype.renderBlock = function(block) {
-    throw new Error("options.renderBlock(block) is not implemented");
-  };
-
-  BasicOptions.prototype.edit = function(startId, count, newBlocks) {
-    throw new Error("options.edit(func) is not implemented");
   };
 
   return BasicOptions;

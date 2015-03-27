@@ -19,9 +19,15 @@
       moved: (editor)->
         {blockId, offset} = editor.getBlockLocation()
         if blockId
-          text = @blocks[blockId].text.substring(0, offset)
+          block = @blocks[blockId]
+          text = block.text.substring(0, offset)
           lines = text.split('\n')
-          $("#status").html "Block: #{blockId}, line: #{lines.length}, col: #{last(lines)?.length ? 0}"
+          line = lines.length
+          cur = blockId
+          while block.prev
+            block = @blocks[block.prev]
+            line += block.text.split('\n').length - 1
+          $("#status").html "Block: #{blockId}#{numSpan ''} line: #{numSpan line} col: #{numSpan last(lines)?.length ? 0} block line: #{numSpan lines.length}"
           return
         $("#status").html "No selection"
         #cur = @first
@@ -110,6 +116,8 @@
       load: (el, text)->
         super el, text
         $("#source").html escapeHtml (block.text for block in @blockList()).join ''
+
+    numSpan = (n)-> "<span class='status-num'>#{n}</span>"
 
     blockLabel = (block)->
       "<span class='blockLabel' contenteditable='false'>[#{block.type}]</span>"

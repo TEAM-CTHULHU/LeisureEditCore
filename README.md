@@ -83,19 +83,18 @@ Properties of BasicOptions
 Methods of BasicOptions
 -----------------------
 * `getBlock(id) -> block?`: get the current block for id
-* `domCursor(node, pos) -> DOMCursor`: return a domCursor that skips over non-content
 * `getContainer(node) -> Node?`: get block DOM node containing for a node
+* `getFirst() -> blockId`: get the first block id
+* `domCursor(node, pos) -> DOMCursor`: return a domCursor that skips over non-content
 * `keyUp(editor) -> void`: handle keyup after-actions
 * `topRect() -> rect?`: returns null or the rectangle of a toolbar at the page top
 * `blockColumn(pos) -> colNum`: returns the start column on the page for the current block
 * `load(el, text) -> void`: parse text into blocks and replace el's contents with rendered DOM
-* `getFirst() -> blockId`: get the first block id
 * `replaceBlocks(startId, count, newBlocks) -> removedBlocks`: override this if you need to link up the blocks, etc., like so that `renderBlock()` can return the proper next id, for instance.
 
 Packages we use
 ===============
 - [DOMCursor](https://github.com/zot/DOMCursor), for finding text locations in DOM trees
-- [adiff](https://github.com/dominictarr/adiff), for finding differences between JS arrays
 
 Building
 ========
@@ -421,11 +420,6 @@ editBlocks: at this point, place the cursor after the newContent
         if pos.isEmpty() then pos = pos.prev()
         pos = @domCursorForCaret()
         pos.moveCaret()
-        #else if pos.node.length == pos.pos
-        #  p = pos.next()
-        #  if !p.isEmpty()
-        #    pos = p
-        #    #pos.moveCaret()
         pos.show @options.topRect()
         @options.moved this
       moveForward: ->
@@ -479,6 +473,25 @@ BasicOptions class
 BasicOptions is an opinionated default options class that requires using a "data-block" attribute to mark blocks in the DOM and a "data-noncontent" attribute to mark items that are not part of the content.
 
     class BasicOptions
+
+Hook methods
+
+`parseBlocks(text) -> blocks`: parse text into array of blocks -- DO NOT assign _id, prev, or next!
+
+      parseBlocks: (text)-> throw new Error "options.parseBlocks(text) is not implemented"
+
+`renderBlock(block) -> html`: render a block (and potentially its children) and return the HTML and the next blockId if there is one
+  Block DOM (DOM for a block) must be a single element with the same id as the block.
+  Block DOM may contain nested block DOM.
+
+      renderBlock: (block)-> throw new Error "options.renderBlock(block) is not implemented"
+
+`edit(startId, count, newBlocks) -> any`: The editor calls this after the user has attempted an edit.  It should make the requested change (probably by calling `replaceBlocks`, below) and rerender the appropriate DOM.
+
+      edit: (startId, count, newBlocks)-> throw new Error "options.edit(func) is not implemented"
+
+Main code
+
       constructor: ->
 
 `blocks {}`: map of id -> block
@@ -495,7 +508,7 @@ BasicOptions is an opinionated default options class that requires using a "data
       setEditor: (@editor)->
       newId: -> "block#{@idCounter++}"
 
-`replaceBlocks(startId, count, newBlocks)`: override this if you need to link up the blocks, etc., like so that `renderBlock()` can return the proper next id, for instance.
+`replaceBlocks(startId, count, newBlocks) -> removedBlocks`: override this if you need to link up the blocks, etc., like so that `renderBlock()` can return the proper next id, for instance.
 
       replaceBlocks: (startId, count, newBlocks)->
         if startId
@@ -518,11 +531,11 @@ BasicOptions is an opinionated default options class that requires using a "data
           delete @blocks[oldBlock._id]
         oldBlocks
 
-`getFirst()`: get the first block id
+`getFirst() -> blockId`: get the first block id
 
       getFirst: -> @first
 
-`getBlock(id)`: get the current block for id
+`getBlock(id) -> block?`: get the current block for id
 
       getBlock: (id)-> @blocks[id]
 
@@ -531,28 +544,28 @@ BasicOptions is an opinionated default options class that requires using a "data
 
       bindings: defaultBindings
 
-`blockColumn(pos)`: returns the start column on the page for the current block
+`blockColumn(pos) -> colNum`: returns the start column on the page for the current block
 
       blockColumn: (pos)-> pos.textPosition().left
 
-`topRect()`: returns null or the rectangle of a toolbar at the page top
+`topRect() -> rect?`: returns null or the rectangle of a toolbar at the page top
 
       topRect: -> null
 
-`keyUp(editor)`: handle keyup after-actions
+`keyUp(editor) -> void`: handle keyup after-actions
 
       keyUp: ->
 
-`domCursor(node, pos)`: return a domCursor that skips over non-content
+`domCursor(node, pos) -> DOMCursor`: return a domCursor that skips over non-content
 
       domCursor: (node, pos)->
         new DOMCursor(node, pos).addFilter (n)-> isEditable(n.node) || 'skip'
 
-`getContainer(node)`: get block DOM node containing for a node
+`getContainer(node) -> Node?`: get block DOM node containing for a node
 
       getContainer: (node)-> $(node).closest('[data-block]')[0]
 
-`load(el, text)`: parse text into blocks and replace el's contents with rendered DOM
+`load(el, text) -> void`: parse text into blocks and replace el's contents with rendered DOM
 
       load: (el, text)->
         idCounter = 0
@@ -570,9 +583,6 @@ BasicOptions is an opinionated default options class that requires using a "data
         while next && [html, next] = @renderBlock @getBlock next
           result += html
         result
-      parseBlocks: (text)-> throw new Error "options.parseBlocks(text) is not implemented"
-      renderBlock: (block)-> throw new Error "options.renderBlock(block) is not implemented"
-      edit: (startId, count, newBlocks)-> throw new Error "options.edit(func) is not implemented"
 
 Utilities
 =========

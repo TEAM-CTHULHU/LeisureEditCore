@@ -1,5 +1,5 @@
 * Bugs
-** BUG adding '*' in front of a code block and then deleting it doens't convert back to code
+** BUG demoting the first headline to a chunk loses the rest of the doc
 ** BUG copy/paste lines doesn't work
 ** BUG selections aren't really handled
 * Defs
