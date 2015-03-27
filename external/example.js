@@ -16,25 +16,15 @@ OrgEditing = (function(superClass) {
   }
 
   OrgEditing.prototype.moved = function(editor) {
-    var blockId, cur, curBlock, lines, offset, ref2, results, text;
+    var blockId, lines, offset, ref2, ref3, ref4, text;
     ref2 = editor.getBlockLocation(), blockId = ref2.blockId, offset = ref2.offset;
     if (blockId) {
       text = this.blocks[blockId].text.substring(0, offset);
       lines = text.split('\n');
-      $("#status").html("Block: " + blockId + ", line: " + lines.length + ", col: " + (last(lines).length));
+      $("#status").html("Block: " + blockId + ", line: " + lines.length + ", col: " + ((ref3 = (ref4 = last(lines)) != null ? ref4.length : void 0) != null ? ref3 : 0));
+      return;
     }
-    return;
-    cur = this.first;
-    lines = 0;
-    results = [];
-    while (cur && (curBlock = this.blocks[cur])) {
-      if (cur._id === block._id) {
-        $("#status").html("Line: " + pos.line + ", col: " + pos.column);
-        break;
-      }
-      results.push(cur = curBlock.next);
-    }
-    return results;
+    return $("#status").html("No selection");
   };
 
   OrgEditing.prototype.parseBlocks = function(text) {
@@ -48,9 +38,19 @@ OrgEditing = (function(superClass) {
   };
 
   OrgEditing.prototype.edit = function(startId, count, newBlocks) {
-    var removed;
+    var block, removed;
     removed = this.replaceBlocks(startId, count, newBlocks, true);
-    return this.editor.node.html(this.renderBlocks());
+    this.editor.node.html(this.renderBlocks());
+    return $("#source").html(escapeHtml(((function() {
+      var i, len, ref2, results;
+      ref2 = this.blockList();
+      results = [];
+      for (i = 0, len = ref2.length; i < len; i++) {
+        block = ref2[i];
+        results.push(block.text);
+      }
+      return results;
+    }).call(this)).join('')));
   };
 
   OrgEditing.prototype.setRemoveRerender = function(id) {
@@ -103,13 +103,18 @@ OrgEditing = (function(superClass) {
   };
 
   OrgEditing.prototype.findChildren = function() {
-    var children;
+    var block, children, i, len, ref2;
     children = this.children = {};
+    ref2 = this.blockList();
+    for (i = 0, len = ref2.length; i < len; i++) {
+      block = ref2[i];
+      block.previousSibling = block.nextSibling = null;
+    }
     return this.findStructure(this.first, (function(_this) {
       return function(parent, child) {
-        var childList, parentId, prev, ref2;
+        var childList, parentId, prev, ref3;
         parentId = parent ? parent._id : 'TOP';
-        childList = (ref2 = children[parentId]) != null ? ref2 : (children[parentId] = []);
+        childList = (ref3 = children[parentId]) != null ? ref3 : (children[parentId] = []);
         prev = _this.getBlock(last(childList));
         childList.push(child._id);
         if (prev) {
@@ -180,12 +185,27 @@ OrgEditing = (function(superClass) {
     return [html, block.nextSibling];
   };
 
+  OrgEditing.prototype.load = function(el, text) {
+    var block;
+    OrgEditing.__super__.load.call(this, el, text);
+    return $("#source").html(escapeHtml(((function() {
+      var i, len, ref2, results;
+      ref2 = this.blockList();
+      results = [];
+      for (i = 0, len = ref2.length; i < len; i++) {
+        block = ref2[i];
+        results.push(block.text);
+      }
+      return results;
+    }).call(this)).join('')));
+  };
+
   return OrgEditing;
 
 })(BasicOptions);
 
 blockLabel = function(block) {
-  return "<span class='blockLabel' contenteditable='false' data-noncontent>[" + block.type + "]</span>";
+  return "<span class='blockLabel' contenteditable='false'>[" + block.type + "]</span>";
 };
 
 blockAttrs = function(block) {
@@ -194,7 +214,7 @@ blockAttrs = function(block) {
   if (block.type === 'headline') {
     extra += " data-headline='" + (escapeAttr(block.level)) + "'";
   }
-  return "id='" + (escapeAttr(block._id)) + "' data-type='" + (escapeAttr(block.type)) + "'" + extra;
+  return "id='" + (escapeAttr(block._id)) + "' data-block='" + (escapeAttr(block._id)) + "' data-type='" + (escapeAttr(block.type)) + "'" + extra;
 };
 
 contentSpan = function(str, type) {

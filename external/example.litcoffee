@@ -21,15 +21,16 @@
         if blockId
           text = @blocks[blockId].text.substring(0, offset)
           lines = text.split('\n')
-          $("#status").html "Block: #{blockId}, line: #{lines.length}, col: #{last(lines).length}"
-        return
-        cur = @first
-        lines = 0
-        while cur && curBlock = @blocks[cur]
-          if cur._id == block._id
-            $("#status").html "Line: #{pos.line}, col: #{pos.column}"
-            break
-          cur = curBlock.next
+          $("#status").html "Block: #{blockId}, line: #{lines.length}, col: #{last(lines)?.length ? 0}"
+          return
+        $("#status").html "No selection"
+        #cur = @first
+        #lines = 0
+        #while cur && curBlock = @blocks[cur]
+        #  if cur._id == blockId
+        #    $("#status").html "Line: #{pos.line}, col: #{pos.column}"
+        #    break
+        #  cur = curBlock.next
       parseBlocks: (text)-> orgDoc parseOrgMode text.replace /\r\n/g, '\n'
       replaceBlocks: (startId, count, newBlocks)->
         super startId, count, newBlocks
@@ -37,7 +38,10 @@
         @findChildren()
       edit: (startId, count, newBlocks)->
         removed = @replaceBlocks startId, count, newBlocks, true
+        #for block in removed
+        #  $("##{block._id}").remove()
         @editor.node.html @renderBlocks()
+        $("#source").html escapeHtml (block.text for block in @blockList()).join ''
       setRemoveRerender: (id)->
         while @removes[id]
           id = @parents[id]
@@ -61,6 +65,8 @@
         @findStructure @first, (parent, child)-> parents[child._id] = parent?._id
       findChildren: ->
         children = @children = {}
+        for block in @blockList()
+          block.previousSibling = block.nextSibling = null
         @findStructure @first, (parent, child)=>
           parentId = if parent then parent._id else 'TOP'
           childList = (children[parentId] ? (children[parentId] = []))
@@ -101,14 +107,17 @@
           "<div #{blockAttrs block}>#{blockLabel block}#{contentSpan block.text, 'text'}#{(@renderBlock(@blocks[childId])[0] for childId in @children[block._id] ? []).join ''}</div>"
         else "<span #{blockAttrs block}>#{blockLabel block}#{escapeHtml block.text}</span>"
         [html, block.nextSibling]
+      load: (el, text)->
+        super el, text
+        $("#source").html escapeHtml (block.text for block in @blockList()).join ''
 
     blockLabel = (block)->
-      "<span class='blockLabel' contenteditable='false' data-noncontent>[#{block.type}]</span>"
+      "<span class='blockLabel' contenteditable='false'>[#{block.type}]</span>"
 
     blockAttrs = (block)->
       extra = ''
       if block.type == 'headline' then extra += " data-headline='#{escapeAttr block.level}'"
-      "id='#{escapeAttr block._id}' data-type='#{escapeAttr block.type}'#{extra}"
+      "id='#{escapeAttr block._id}' data-block='#{escapeAttr block._id}' data-type='#{escapeAttr block.type}'#{extra}"
 
     contentSpan = (str, type)->
       str = escapeHtml str

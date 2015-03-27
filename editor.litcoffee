@@ -65,32 +65,36 @@ Hooks you must define for BasicOptions objects
 ----------------------------------------------
 Here are the hook methods you need to provide:
 
-* `parseBlocks(text)`: parse text into array of blocks -- DO NOT assign _id, prev, or next!
-* `renderBlock(block) -> [html, next]`: render a block (and potentially its children) and return the HTML and the next blockId if there is one
+* `parseBlocks(text) -> blocks`: parse text into array of blocks -- DO NOT assign _id, prev, or next!
+* `renderBlock(block) -> html`: render a block (and potentially its children) and return the HTML and the next blockId if there is one
   Block DOM (DOM for a block) must be a single element with the same id as the block.
   Block DOM may contain nested block DOM.
-* `edit(startId, count, newBlocks)`: The editor calls this after the user has made an edit.  It should make the requested change (probably by calling `replaceBlocks``, below) and rerender the appropriate DOM.
+* `edit(startId, count, newBlocks) -> any`: The editor calls this after the user has attempted an edit.  It should make the requested change (probably by calling `replaceBlocks`, below) and rerender the appropriate DOM.
 
 After that, you must render the changes into HTML and replace them into the element.
 
-Behavior BasicOptions Provides
-------------------------------
-* `getBlock(id)`: get the current block for id
-* `domCursor(node, pos)`: return a domCursor that skips over non-content
-* `getContainer(node)`: get block DOM node containing for a node
-* `keyUp(editor)`: handle keyup after-actions
+Properties of BasicOptions
+--------------------------
+* `blocks {}`: map of id -> block
+* `first`: id of first block
 * `bindings`: a map of bindings (can use EditCore.defaultBindings)
   each binding takes args (editor, event, selectionRange)
-* `topRect()`: returns null or the rectangle of a toolbar at the page top
-* `blockColumn(pos)`: returns the start column on the page for the current block
-* `load(el, text)`: parse text into blocks and replace el's contents with rendered DOM
-* `getFirst()`: get the first block id
-* `replaceBlocks(startId, count, newBlocks)`: override this if you need to link up the blocks, etc., like so that `renderBlock()` can return the proper next id, for instance.
+
+Methods of BasicOptions
+-----------------------
+* `getBlock(id) -> block?`: get the current block for id
+* `getContainer(node) -> Node?`: get block DOM node containing for a node
+* `getFirst() -> blockId`: get the first block id
+* `domCursor(node, pos) -> DOMCursor`: return a domCursor that skips over non-content
+* `keyUp(editor) -> void`: handle keyup after-actions
+* `topRect() -> rect?`: returns null or the rectangle of a toolbar at the page top
+* `blockColumn(pos) -> colNum`: returns the start column on the page for the current block
+* `load(el, text) -> void`: parse text into blocks and replace el's contents with rendered DOM
+* `replaceBlocks(startId, count, newBlocks) -> removedBlocks`: override this if you need to link up the blocks, etc., like so that `renderBlock()` can return the proper next id, for instance.
 
 Packages we use
 ===============
 - [DOMCursor](https://github.com/zot/DOMCursor), for finding text locations in DOM trees
-- [adiff](https://github.com/dominictarr/adiff), for finding differences between JS arrays
 
 Building
 ========
@@ -304,7 +308,7 @@ editBlocks: at this point, place the cursor after the newContent
         holder = if prevBlock then $("##{prevBlock._id}") else @node[0]
         @domCursorForTextPosition(holder, caret).moveCaret()
 
-Change oldBlocks into newBlocks and rerender the changed parts of the doc
+`changeStructure(oldBlocks, newText)`: Change oldBlocks into newBlocks and rerender the changed parts of the doc
 
       changeStructure: (oldBlocks, newText)->
         oldBlocks = oldBlocks.slice()
@@ -390,7 +394,7 @@ Change oldBlocks into newBlocks and rerender the changed parts of the doc
       handleKeyup: (e)->
         if @ignoreModCheck = @ignoreModCheck then @ignoreModCheck--
         if @clipboardKey || (!e.DE_shiftkey && !@modCancelled && modifyingKey((e.charCode || e.keyCode || e.which), e))
-          @options.keyUp this
+          @options.keyUp()
           @clipboardKey = null
       adjustSelection: (e)->
         if e.detail == 1 then return
@@ -412,27 +416,29 @@ Change oldBlocks into newBlocks and rerender the changed parts of the doc
       moveSelectionDown: -> @showCaret @moveDown()
       moveSelectionBackward: -> @showCaret @moveBackward()
       moveSelectionUp: -> @showCaret @moveUp()
-      showCaret: (pos)-> pos.show @options.topRect()
+      showCaret: (pos)->
+        if pos.isEmpty() then pos = pos.prev()
+        pos = @domCursorForCaret()
+        pos.moveCaret()
+        pos.show @options.topRect()
+        @options.moved this
       moveForward: ->
         start = pos = @domCursorForCaret().firstText().save()
-        while !pos.isEmpty() && ((cur = @domCursorForCaret()).firstText().equals start || !cur.node.isContentEditable)
+        while !pos.isEmpty() && @domCursorForCaret().firstText().equals start
           pos = pos.forwardChar()
-          if pos.node.length == pos.pos then pos = pos.next()
           pos.moveCaret()
-        @options.moved this
         pos
       moveBackward: ->
         start = pos = @domCursorForCaret().firstText().save()
         while !pos.isEmpty() && @domCursorForCaret().firstText().equals start
           pos = pos.backwardChar()
           pos.moveCaret()
-        @options.moved this
         pos
       moveDown: ->
         linePos = prev = pos = @domCursorForCaret().save()
         if !(@prevKeybinding in [keyFuncs.nextLine, keyFuncs.previousLine]) then @movementGoal = @options.blockColumn pos
         line = 0
-        while !(pos = @moveSelectionForward()).isEmpty()
+        while !(pos = @moveForward()).isEmpty()
           if linePos.differentLines pos
             line++
             linePos = pos
@@ -440,7 +446,6 @@ Change oldBlocks into newBlocks and rerender the changed parts of the doc
           if line == 1 && @options.blockColumn(pos) >= @movementGoal
             return @moveToBestPosition pos, prev, linePos
           prev = pos
-        @options.moved this
         pos
       moveUp: ->
         linePos = prev = pos = @domCursorForCaret().save()
@@ -454,7 +459,6 @@ Change oldBlocks into newBlocks and rerender the changed parts of the doc
           if line == 1 && @options.blockColumn(pos) <= @movementGoal
             return @moveToBestPosition pos, prev, linePos
           prev = pos
-        @options.moved this
         pos
 
 `moveToBestPosition(pos, prev, linePos)` tries to move to the best position in the HTML text.  If pos is closer to the goal, return it, otherwise move to prev and return prev.
@@ -466,15 +470,46 @@ Change oldBlocks into newBlocks and rerender the changed parts of the doc
 
 BasicOptions class
 ==================
-BasicOptions is an opinionated default options class that encourages using a "data-type" attribute to mark blocks in the DOM and a "data-noncontent" attribute to mark items that are not part of the content.
+BasicOptions is an opinionated default options class that requires using a "data-block" attribute to mark blocks in the DOM and a "data-noncontent" attribute to mark items that are not part of the content.
 
     class BasicOptions
+
+Hook methods
+
+`parseBlocks(text) -> blocks`: parse text into array of blocks -- DO NOT assign _id, prev, or next!
+
+      parseBlocks: (text)-> throw new Error "options.parseBlocks(text) is not implemented"
+
+`renderBlock(block) -> html`: render a block (and potentially its children) and return the HTML and the next blockId if there is one
+  Block DOM (DOM for a block) must be a single element with the same id as the block.
+  Block DOM may contain nested block DOM.
+
+      renderBlock: (block)-> throw new Error "options.renderBlock(block) is not implemented"
+
+`edit(startId, count, newBlocks) -> any`: The editor calls this after the user has attempted an edit.  It should make the requested change (probably by calling `replaceBlocks`, below) and rerender the appropriate DOM.
+
+      edit: (startId, count, newBlocks)-> throw new Error "options.edit(func) is not implemented"
+
+Main code
+
       constructor: ->
+
+`blocks {}`: map of id -> block
+
         @blocks = {}
+
+`first`: id of first block
+
         @first = null
+
+`idCounter`: id number for next created block
+
         @idCounter = 0
       setEditor: (@editor)->
       newId: -> "block#{@idCounter++}"
+
+`replaceBlocks(startId, count, newBlocks) -> removedBlocks`: override this if you need to link up the blocks, etc., like so that `renderBlock()` can return the proper next id, for instance.
+
       replaceBlocks: (startId, count, newBlocks)->
         if startId
           oldBlocks = for i in [0...count]
@@ -495,29 +530,66 @@ BasicOptions is an opinionated default options class that encourages using a "da
         for oldBlock in oldBlocks = oldBlocks.slice newBlocks.length
           delete @blocks[oldBlock._id]
         oldBlocks
-      mousedown: (e)->
+
+`getFirst() -> blockId`: get the first block id
+
       getFirst: -> @first
+
+`getBlock(id) -> block?`: get the current block for id
+
       getBlock: (id)-> @blocks[id]
+
+`bindings`: a map of bindings (can use EditCore.defaultBindings)
+  each binding takes args (editor, event, selectionRange)
+
       bindings: defaultBindings
+
+`blockColumn(pos) -> colNum`: returns the start column on the page for the current block
+
       blockColumn: (pos)-> pos.textPosition().left
+
+`topRect() -> rect?`: returns null or the rectangle of a toolbar at the page top
+
       topRect: -> null
-      keyUp: (editor)->
+
+`keyUp(editor) -> void`: handle keyup after-actions
+
+      keyUp: ->
+
+`domCursor(node, pos) -> DOMCursor`: return a domCursor that skips over non-content
+
       domCursor: (node, pos)->
-        new DOMCursor(node, pos).addFilter (n)-> !n.hasAttribute('data-noncontent') || 'skip'
-      getContainer: (node)-> $(node).closest('[data-type]')[0]
+        new DOMCursor(node, pos).addFilter (n)-> isEditable(n.node) || 'skip'
+
+`getContainer(node) -> Node?`: get block DOM node containing for a node
+
+      getContainer: (node)-> $(node).closest('[data-block]')[0]
+
+`load(el, text) -> void`: parse text into blocks and replace el's contents with rendered DOM
+
       load: (el, text)->
         idCounter = 0
         @replaceBlocks null, 0, @parseBlocks text
         el.html @renderBlocks()
+      blockList: ->
+        next = @first
+        while next
+          bl = @getBlock next
+          next = bl.next
+          bl
       renderBlocks: ->
         result = ''
         next = @first
         while next && [html, next] = @renderBlock @getBlock next
           result += html
         result
-      parseBlocks: (text)-> throw new Error "options.parseBlocks(text) is not implemented"
-      renderBlock: (block)-> throw new Error "options.renderBlock(block) is not implemented"
-      edit: (startId, count, newBlocks)-> throw new Error "options.edit(func) is not implemented"
+
+Utilities
+=========
+
+    isEditable = (n)->
+      n = if n.nodeType == n.TEXT_NODE then n.parentNode else n
+      n.isContentEditable
 
     link = (prev, next)->
       prev.next = next._id

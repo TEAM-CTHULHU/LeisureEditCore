@@ -1,5 +1,15 @@
 #editor {
     white-space: pre-line;
+    max-height: calc(100% - 2em);
+    overflow: auto;
+    padding: 5px;
+}
+
+#editorLayout {
+    height: 100%;
+    width: 50%;
+    display: inline-block;
+    vertical-align: top;
 }
 
 [data-type] {
@@ -17,8 +27,20 @@
 }
 
 #status-holder {
-    position: absolute;
-    bottom: 2px;
-    width: calc(100% - 20px);
+    height: 1em;
     border: solid black 2px;
+}
+
+#sourceLayout {
+    width: calc(50% - 4px);
+    display: inline-block;
+    height: 100%;
+    vertical-align: top;
+}
+#source {
+    white-space: pre;
+    max-height: calc(100% - 1em);
+    border: solid black 2px;
+    padding: 5px;
+    overflow: auto;
 }
