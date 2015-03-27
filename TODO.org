@@ -1,6 +1,10 @@
 * Bugs
 ** BUG demoting the first headline to a chunk loses the rest of the doc
-** BUG copy/paste lines doesn't work
 ** BUG selections aren't really handled
+** BUG copy/paste lines doesn't work
+** BUG spell check doesn't work right
+** BUG undo/redo don't work right
+** BUG home puts cursor before gray boxes
+** BUG capslock doesn't work
 * Defs
 #+TODO: TODO BUG | DONE

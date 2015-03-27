@@ -175,6 +175,9 @@ Here is the code for [EditCore](https://github.com/zot/EditCore).
         false
     defaultBindings =
       #'C-S': keyFuncs.save
+      'C-Z': -> alert 'UNDO not supported yet'
+      'C-S-Z': -> alert 'REDO not supported yet'
+      'C-Y': -> alert 'REDO not supported yet'
       'UP': keyFuncs.previousLine
       'DOWN': keyFuncs.nextLine
       'LEFT': keyFuncs.backwardChar
@@ -193,7 +196,9 @@ EditCore class
 
     class EditCore
       constructor: (@node, @options)->
-        @node.attr 'contenteditable', 'true'
+        @node
+          .attr 'contenteditable', 'true'
+          .attr 'spellcheck', 'false'
         @curKeyBinding = @prevKeybinding = null
         @bind()
         @lastKeys = []
@@ -247,13 +252,14 @@ EditCore class
         else -1
       loadURL: (url)-> $.get url, (text)=> @options.load @node, text
       handleInsert: (e, s, text)->
+        e.preventDefault()
         if s.type == 'Caret'
-          e.preventDefault()
           holder = @options.getContainer(s.anchorNode)
           block = @getCopy holder.id
           blocks = [block]
           pos = @getTextPosition holder, s.anchorNode, s.anchorOffset
           @editBlocks [block], pos, pos, (text ? getEventChar e), pos + 1
+        else setTimeout (->alert 'Selection not supported yet'), 1
       backspace: (event, sel, r)->
         holderId = @options.getContainer(sel.anchorNode).id
         @currentBlockIds = [(@getCopy holderId)._id]
@@ -286,6 +292,7 @@ EditCore class
               else return
             else blocks.push block
             @editBlocks blocks, pos, stop, '', pos
+        else setTimeout (->alert 'Selection not supported yet'), 1
 
 editBlocks: at this point, place the cursor after the newContent
 
@@ -332,6 +339,29 @@ editBlocks: at this point, place the cursor after the newContent
           newBlocks.pop()
         oldBlocks: oldBlocks, newBlocks: newBlocks, newText: newText
       bind: ->
+        @node.on 'dragenter', (e)=>
+          e.preventDefault()
+          #setTimeout (->alert 'DROP not supported yet'), 1
+          false
+        @node.on 'dragover', (e)=>
+          e.preventDefault()
+          false
+        @node.on 'dragleave', (e)=>
+          e.preventDefault()
+          false
+        @node.on 'drop', (e)=>
+          e.preventDefault()
+          setTimeout (->alert 'DROP not supported yet'), 1
+          false
+        @node.on 'cut', (e)=>
+          e.preventDefault()
+          alert 'CUT not supported yet'
+        @node.on 'copy', (e)=>
+          e.preventDefault()
+          alert 'COPY not supported yet'
+        @node.on 'paste', (e)=>
+          e.preventDefault()
+          alert 'PASTE not supported yet'
         @node.on 'mousedown', (e)=>
           @options.moved this
           @setCurKeyBinding null
@@ -559,7 +589,7 @@ Main code
 `domCursor(node, pos) -> DOMCursor`: return a domCursor that skips over non-content
 
       domCursor: (node, pos)->
-        new DOMCursor(node, pos).addFilter (n)-> isEditable(n.node) || 'skip'
+        new DOMCursor(node, pos).addFilter (n)-> isEditable(n.node) # || 'skip'
 
 `getContainer(node) -> Node?`: get block DOM node containing for a node
 

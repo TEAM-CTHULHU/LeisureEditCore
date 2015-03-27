@@ -79,6 +79,15 @@ keyFuncs = {
 };
 
 defaultBindings = {
+  'C-Z': function() {
+    return alert('UNDO not supported yet');
+  },
+  'C-S-Z': function() {
+    return alert('REDO not supported yet');
+  },
+  'C-Y': function() {
+    return alert('REDO not supported yet');
+  },
   'UP': keyFuncs.previousLine,
   'DOWN': keyFuncs.nextLine,
   'LEFT': keyFuncs.backwardChar,
@@ -89,7 +98,7 @@ EditCore = (function() {
   function EditCore(node1, options) {
     this.node = node1;
     this.options = options;
-    this.node.attr('contenteditable', 'true');
+    this.node.attr('contenteditable', 'true').attr('spellcheck', 'false');
     this.curKeyBinding = this.prevKeybinding = null;
     this.bind();
     this.lastKeys = [];
@@ -181,13 +190,17 @@ EditCore = (function() {
 
   EditCore.prototype.handleInsert = function(e, s, text) {
     var block, blocks, holder, pos;
+    e.preventDefault();
     if (s.type === 'Caret') {
-      e.preventDefault();
       holder = this.options.getContainer(s.anchorNode);
       block = this.getCopy(holder.id);
       blocks = [block];
       pos = this.getTextPosition(holder, s.anchorNode, s.anchorOffset);
       return this.editBlocks([block], pos, pos, text != null ? text : getEventChar(e), pos + 1);
+    } else {
+      return setTimeout((function() {
+        return alert('Selection not supported yet');
+      }), 1);
     }
   };
 
@@ -241,6 +254,10 @@ EditCore = (function() {
         }
         return this.editBlocks(blocks, pos, stop, '', pos);
       }
+    } else {
+      return setTimeout((function() {
+        return alert('Selection not supported yet');
+      }), 1);
     }
   };
 
@@ -310,6 +327,51 @@ EditCore = (function() {
   };
 
   EditCore.prototype.bind = function() {
+    this.node.on('dragenter', (function(_this) {
+      return function(e) {
+        e.preventDefault();
+        return false;
+      };
+    })(this));
+    this.node.on('dragover', (function(_this) {
+      return function(e) {
+        e.preventDefault();
+        return false;
+      };
+    })(this));
+    this.node.on('dragleave', (function(_this) {
+      return function(e) {
+        e.preventDefault();
+        return false;
+      };
+    })(this));
+    this.node.on('drop', (function(_this) {
+      return function(e) {
+        e.preventDefault();
+        setTimeout((function() {
+          return alert('DROP not supported yet');
+        }), 1);
+        return false;
+      };
+    })(this));
+    this.node.on('cut', (function(_this) {
+      return function(e) {
+        e.preventDefault();
+        return alert('CUT not supported yet');
+      };
+    })(this));
+    this.node.on('copy', (function(_this) {
+      return function(e) {
+        e.preventDefault();
+        return alert('COPY not supported yet');
+      };
+    })(this));
+    this.node.on('paste', (function(_this) {
+      return function(e) {
+        e.preventDefault();
+        return alert('PASTE not supported yet');
+      };
+    })(this));
     this.node.on('mousedown', (function(_this) {
       return function(e) {
         _this.options.moved(_this);
@@ -643,7 +705,7 @@ BasicOptions = (function() {
 
   BasicOptions.prototype.domCursor = function(node, pos) {
     return new DOMCursor(node, pos).addFilter(function(n) {
-      return isEditable(n.node) || 'skip';
+      return isEditable(n.node);
     });
   };
 

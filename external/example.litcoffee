@@ -110,7 +110,9 @@
           else $(@editor.node).append html
       renderBlock: (block)->
         html = if block.type == 'headline'
-          "<div #{blockAttrs block}>#{blockLabel block}#{contentSpan block.text, 'text'}#{(@renderBlock(@blocks[childId])[0] for childId in @children[block._id] ? []).join ''}</div>"
+          "<div #{blockAttrs block} contenteditable='false'>#{blockLabel block}<div contenteditable='true'>#{contentSpan block.text, 'text'}#{(@renderBlock(@blocks[childId])[0] for childId in @children[block._id] ? []).join ''}</div></div>"
+        else if block.type == 'code'
+          "<span #{blockAttrs block}>#{blockLabel block}#{escapeHtml block.text}</span>"
         else "<span #{blockAttrs block}>#{blockLabel block}#{escapeHtml block.text}</span>"
         [html, block.nextSibling]
       load: (el, text)->

@@ -3,11 +3,14 @@
     max-height: calc(100% - 2em);
     overflow: auto;
     padding: 5px;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
 }
 
 #editorLayout {
     height: 100%;
-    width: 50%;
+    width: calc(50% - 10px);
     display: inline-block;
     vertical-align: top;
 }
@@ -15,7 +18,23 @@
 [data-type] {
     display: block;
     border: solid black 1px;
+    border-radius: 10px;
     padding: 3px;
+}
+
+[data-type='headline'] {
+    padding: 5px;
+    background: lightgray;
+}
+
+[data-type='headline'] > div {
+    background: white;
+    border-radius: 10px;
+    padding: 3px;
+}
+
+[data-type='headline'] > .blockLabel {
+    margin-bottom: 5px;
 }
 
 .blockLabel {
@@ -32,7 +51,7 @@
 }
 
 #sourceLayout {
-    width: calc(50% - 4px);
+    width: calc(50% - 10px);
     display: inline-block;
     height: 100%;
     vertical-align: top;

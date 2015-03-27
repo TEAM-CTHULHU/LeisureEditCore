@@ -179,7 +179,7 @@ OrgEditing = (function(superClass) {
 
   OrgEditing.prototype.renderBlock = function(block) {
     var childId, html;
-    html = block.type === 'headline' ? "<div " + (blockAttrs(block)) + ">" + (blockLabel(block)) + (contentSpan(block.text, 'text')) + (((function() {
+    html = block.type === 'headline' ? "<div " + (blockAttrs(block)) + " contenteditable='false'>" + (blockLabel(block)) + "<div contenteditable='true'>" + (contentSpan(block.text, 'text')) + (((function() {
       var i, len, ref2, ref3, results;
       ref3 = (ref2 = this.children[block._id]) != null ? ref2 : [];
       results = [];
@@ -188,7 +188,7 @@ OrgEditing = (function(superClass) {
         results.push(this.renderBlock(this.blocks[childId])[0]);
       }
       return results;
-    }).call(this)).join('')) + "</div>" : "<span " + (blockAttrs(block)) + ">" + (blockLabel(block)) + (escapeHtml(block.text)) + "</span>";
+    }).call(this)).join('')) + "</div></div>" : block.type === 'code' ? "<span " + (blockAttrs(block)) + ">" + (blockLabel(block)) + (escapeHtml(block.text)) + "</span>" : "<span " + (blockAttrs(block)) + ">" + (blockLabel(block)) + (escapeHtml(block.text)) + "</span>";
     return [html, block.nextSibling];
   };
 
