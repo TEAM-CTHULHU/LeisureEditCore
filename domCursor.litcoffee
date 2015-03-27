@@ -594,7 +594,6 @@ MutableDOMCursor Class
 A mutable cursor -- cursor movement, filter changes, etc. change the cursor instead of returning a new one.
 
     class MutableDOMCursor extends DOMCursor
-      constructor: (@node, @pos, @filter)-> super node, pos, filter
       setFilter: (@filter)-> this
       newPos: (@node, @pos)->
         @savedTextPosition = null

@@ -764,11 +764,8 @@ emptyDOMCursor = new EmptyDOMCursor();
 MutableDOMCursor = (function(superClass) {
   extend(MutableDOMCursor, superClass);
 
-  function MutableDOMCursor(node1, pos3, filter1) {
-    this.node = node1;
-    this.pos = pos3;
-    this.filter = filter1;
-    MutableDOMCursor.__super__.constructor.call(this, node, pos, filter);
+  function MutableDOMCursor() {
+    return MutableDOMCursor.__super__.constructor.apply(this, arguments);
   }
 
   MutableDOMCursor.prototype.setFilter = function(filter1) {

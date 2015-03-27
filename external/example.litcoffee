@@ -31,33 +31,13 @@
             break
           cur = curBlock.next
       parseBlocks: (text)-> orgDoc parseOrgMode text.replace /\r\n/g, '\n'
-      newBlocks: (blocks)->
-        super blocks
+      replaceBlocks: (startId, count, newBlocks)->
+        super startId, count, newBlocks
         @findParents()
         @findChildren()
-      isMergeable: (newBlock, neighbor, oldBlock)->
-        newBlock.type == 'chunk' && neighbor?.type == 'chunk'
-      edit: (func)->
-        {@removes, @updates} = @changes = func()
-        newFirst = @blocks[@first]
-        while @removes[newFirst._id]
-          newFirst = newFirst.next && @blocks[newFirst.next]
-        if newFirst then while p = newFirst.prev
-          newFirst = @getChangedBlock p
-        for id of @removes
-          $("##{id}").remove()
-        @oldParents = @parents
-        @changes.applyChanges()
-        @findParents()
-        @findChildren()
-        for id, block of @updates
-          @setUpdateRerender block
-        for id of @rerender
-          @rerenderBlock @blocks[id]
-        @updates = null
-        @removes = null
-        @rerender = {}
-        @newParents = null
+      edit: (startId, count, newBlocks)->
+        removed = @replaceBlocks startId, count, newBlocks, true
+        @editor.node.html @renderBlocks()
       setRemoveRerender: (id)->
         while @removes[id]
           id = @parents[id]

@@ -41,47 +41,16 @@ OrgEditing = (function(superClass) {
     return orgDoc(parseOrgMode(text.replace(/\r\n/g, '\n')));
   };
 
-  OrgEditing.prototype.newBlocks = function(blocks) {
-    OrgEditing.__super__.newBlocks.call(this, blocks);
+  OrgEditing.prototype.replaceBlocks = function(startId, count, newBlocks) {
+    OrgEditing.__super__.replaceBlocks.call(this, startId, count, newBlocks);
     this.findParents();
     return this.findChildren();
   };
 
-  OrgEditing.prototype.isMergeable = function(newBlock, neighbor, oldBlock) {
-    return newBlock.type === 'chunk' && (neighbor != null ? neighbor.type : void 0) === 'chunk';
-  };
-
-  OrgEditing.prototype.edit = function(func) {
-    var block, id, newFirst, p, ref2, ref3;
-    ref2 = this.changes = func(), this.removes = ref2.removes, this.updates = ref2.updates;
-    newFirst = this.blocks[this.first];
-    while (this.removes[newFirst._id]) {
-      newFirst = newFirst.next && this.blocks[newFirst.next];
-    }
-    if (newFirst) {
-      while (p = newFirst.prev) {
-        newFirst = this.getChangedBlock(p);
-      }
-    }
-    for (id in this.removes) {
-      $("#" + id).remove();
-    }
-    this.oldParents = this.parents;
-    this.changes.applyChanges();
-    this.findParents();
-    this.findChildren();
-    ref3 = this.updates;
-    for (id in ref3) {
-      block = ref3[id];
-      this.setUpdateRerender(block);
-    }
-    for (id in this.rerender) {
-      this.rerenderBlock(this.blocks[id]);
-    }
-    this.updates = null;
-    this.removes = null;
-    this.rerender = {};
-    return this.newParents = null;
+  OrgEditing.prototype.edit = function(startId, count, newBlocks) {
+    var removed;
+    removed = this.replaceBlocks(startId, count, newBlocks, true);
+    return this.editor.node.html(this.renderBlocks());
   };
 
   OrgEditing.prototype.setRemoveRerender = function(id) {

@@ -69,10 +69,7 @@ Here are the hook methods you need to provide:
 * `renderBlock(block) -> [html, next]`: render a block (and potentially its children) and return the HTML and the next blockId if there is one
   Block DOM (DOM for a block) must be a single element with the same id as the block.
   Block DOM may contain nested block DOM.
-* `isMergeable(newBlock, neighbor, oldBlock)`: return whether it is desirable to
-  merge newBlock and neighbor
-* `edit(func)`: This must run func which performs the actual editing and returns {removes: (map of id->true), updates: (map of id->block)}
-* `newBlocks(blockList)`: override this if you need to link up the blocks, etc., like so that `renderBlock()` can return the proper next id, for instance.
+* `edit(startId, count, newBlocks)`: The editor calls this after the user has made an edit.  It should make the requested change (probably by calling `replaceBlocks``, below) and rerender the appropriate DOM.
 
 After that, you must render the changes into HTML and replace them into the element.
 
@@ -88,6 +85,7 @@ Behavior BasicOptions Provides
 * `blockColumn(pos)`: returns the start column on the page for the current block
 * `load(el, text)`: parse text into blocks and replace el's contents with rendered DOM
 * `getFirst()`: get the first block id
+* `replaceBlocks(startId, count, newBlocks)`: override this if you need to link up the blocks, etc., like so that `renderBlock()` can return the proper next id, for instance.
 
 Packages we use
 ===============
@@ -251,9 +249,7 @@ EditCore class
           block = @getCopy holder.id
           blocks = [block]
           pos = @getTextPosition holder, s.anchorNode, s.anchorOffset
-          if pos == block.text.length && block.next then blocks.push @getCopy block.next
-          @ignoreModCheck = @ignoreModCheck || 1
-          @editBlock blocks, pos, pos, (text ? getEventChar e), pos + 1
+          @editBlocks [block], pos, pos, (text ? getEventChar e), pos + 1
       backspace: (event, sel, r)->
         holderId = @options.getContainer(sel.anchorNode).id
         @currentBlockIds = [(@getCopy holderId)._id]
@@ -279,104 +275,58 @@ EditCore class
               pos += if forward then 0 else -1
               stop = pos + 1
             if pos < 0
-              if blocks.prev
+              if block.prev
                 blocks.push bl = @getCopy block.prev
                 pos += bl.text.length
                 stop += bl.text.length
               else return
-            blocks.push block
-            if pos == block.text.length - 1 && block.text[block.text.length - 1] == '\n'
-              if block.next then blocks.push @getCopy block.next
-              else return
-            @editBlock blocks, pos, stop, '', pos
-      editBlock: (blocks, start, end, newContent, caret)->
+            else blocks.push block
+            @editBlocks blocks, pos, stop, '', pos
+
+editBlocks: at this point, place the cursor after the newContent
+
+      editBlocks: (blocks, start, end, newContent)->
+        caret = start + newContent.length
         oldText = (block.text for block in blocks).join ''
         newText = oldText.substring(0, start) + newContent + oldText.substring end
-        if caret?
-          bl = blocks.slice()
-          prev = bl[0]
-          for i in [0...2]
-            if newPrev = @getCopy prev.prev
-              prev = newPrev
-              caret += prev.text.length
-          prevHolder = $("##{prev._id}")[0]
-          saveC = @domCursor(prevHolder, 0).firstText()
-          save = @getTextPosition(prevHolder, saveC.node, saveC.pos) + caret
-        @options.edit => @changeStructure blocks, newText
-        @changes = null
-        if caret?
-          if prevHolder.ownerDocument.compareDocumentPosition(prevHolder) & Element.DOCUMENT_POSITION_DISCONNECTED
-            prevHolder = $("##{prev._id}")[0]
-          return @domCursorForTextPosition(prevHolder, save).moveCaret()
+        {oldBlocks, newBlocks, newText} = @changeStructure blocks, newText
+        startId = oldBlocks[0]._id
+        count = oldBlocks.length
+        if startId
+          cur = startId
+          while cur != blocks[0]._id
+            block = @options.getBlock(cur)
+            caret += block.text.length
+            cur = block.next
+          if prevBlock = @options.getBlock @options.getBlock(startId).prev
+            caret += prevBlock.text.length
+        @options.edit startId, count, newBlocks
+        holder = if prevBlock then $("##{prevBlock._id}") else @node[0]
+        @domCursorForTextPosition(holder, caret).moveCaret()
 
 Change oldBlocks into newBlocks and rerender the changed parts of the doc
 
       changeStructure: (oldBlocks, newText)->
-        @changes = new Changes this
-        if bl = @changes.getUpdateBlock oldBlocks[0].prev
-          oldBlocks.unshift bl
-          newText = bl.text + newText
-        if bl = @changes.getUpdateBlock last(oldBlocks).next
-          oldBlocks.push bl
-          newText += bl.text
-        newBlocks = @options.parseBlocks newText
-        @remapBlocks oldBlocks, newBlocks
-        @changes
-
-`checkMerge` checks whether to merge the new text with the preceding/following old text.
-
-It returns the id of the old block if merge, otherwise the id of the new block.
-
-      checkMerge: (oldBlock, newBlock, neighbor, oldBlocks, newBlocks, func)->
-        if @options.isMergeable newBlock, neighbor, oldBlock
-          #console.log "update item: #{auxBlock._id}"
-          txt = func neighbor.text
-          nb = @options.parseBlocks neighbor.text
-          if nb.length == 1
-            neighbor.text = txt
-            @changes.updateBlock neighbor, true
-          else
-          neighbor._id
-        else newBlock._id
-
-`remapBlocks` tries to find the best fit for the new blocks using [Adiff](https://github.com/dominictarr/adiff), a diff implementation for arrays.
-
-Adiff results are like splice calls [offset, count, item, item, item]
-
-      remapBlocks: (oldBlocks, newBlocks)->
-        oldTypes = (block.type for block in oldBlocks)
-        newTypes = (block.type for block in newBlocks)
-        prevId = oldBlocks[0].prev
-        oldBlocks.reverse()
-        newBlocks.reverse()
-        offset = 0
-        diffs = Adiff.diff oldTypes, newTypes
-        #if diffs.length then console.log "Old Structure: [#{oldTypes.join ', '}], new: [#{newTypes.join ', '}]"
-        for diff in diffs
-          if diff[0] > offset
-            #console.log "Update-1 #{diff[0] - offset} items: #{(bl._id for bl in oldBlocks).join ', '}"
-            prevId = @changes.updateBlocks diff[0] - offset, oldBlocks, newBlocks, prevId
-          offset = diff[0] + diff[1]
-          insertCount = diff.length - 2
-          deleteCount = diff[1]
-          updateCount = Math.min deleteCount, insertCount
-          insertCount -= updateCount
-          deleteCount -= updateCount
-          if updateCount > 0
-            #console.log "Update-2 #{updateCount} items: #{(bl._id for bl in oldBlocks).join ', '}"
-            prevId = @changes.updateBlocks updateCount, oldBlocks, newBlocks, prevId
-          #if deleteCount > 0 then console.log "Delete #{deleteCount} items: #{("#{block._id}: #{block.text}" for block in Lazy(oldBlocks).reverse().take(deleteCount).toArray()).join ', '}"
-          for i in [0 ... deleteCount]
-            @changes.removeBlock oldBlocks.pop()
-          #if insertCount > 0 then console.log "Insert-1 #{insertCount} items: #{("#{bl._id}: #{bl.text}" for bl in Lazy(newBlocks).reverse().take(insertCount).toArray()).join ', '}"
-          for i in [0 ... insertCount]
-            prevId = @changes.insertBlock newBlocks.pop(), prevId
-        #
-        # should just be a list of new/old items to update now
-        # new/old lists should be the same size
-        #
-        if oldBlocks.length != newBlocks.length then console.log "WARNING -- inconsistent block count after diff processing"
-        prevId = @changes.updateBlocks newBlocks.length, oldBlocks, newBlocks, prevId
+        oldBlocks = oldBlocks.slice()
+        oldText = null
+        while oldText != newText
+          oldText = newText
+          newBlocks = @options.parseBlocks newText
+          {prev:prevId, text:firstText} = oldBlocks[0]
+          if prevId && firstText != newBlocks[0].text
+            oldBlocks.unshift prev = @options.getBlock prevId
+            newText = prev.text + newText
+          {next:nextId, text:lastText} = last oldBlocks
+          if nextId && lastText != last(newBlocks).text
+            oldBlocks.push next = @options.getBlock nextId
+            newText += next.text
+        while oldBlocks[0].text == newBlocks[0].text
+          oldBlocks.shift()
+          newBlocks.shift()
+        while last(oldBlocks).text == last(newBlocks).text
+          oldBlocks.pop()
+          newBlocks.pop()
+        oldBlocks: oldBlocks, newBlocks: newBlocks, newText: newText
       bind: ->
         @node.on 'mousedown', (e)=>
           @options.moved this
@@ -465,8 +415,9 @@ Adiff results are like splice calls [offset, count, item, item, item]
       showCaret: (pos)-> pos.show @options.topRect()
       moveForward: ->
         start = pos = @domCursorForCaret().firstText().save()
-        while !pos.isEmpty() && @domCursorForCaret().firstText().equals start
+        while !pos.isEmpty() && ((cur = @domCursorForCaret()).firstText().equals start || !cur.node.isContentEditable)
           pos = pos.forwardChar()
+          if pos.node.length == pos.pos then pos = pos.next()
           pos.moveCaret()
         @options.moved this
         pos
@@ -513,76 +464,6 @@ Adiff results are like splice calls [offset, count, item, item, item]
           pos
         else prev.moveCaret()
 
-Changes class
-=============
-EditCore uses this to manage block changes for an edit.  The user may replace a selection with another selection, so changes could be complex.
-
-    class Changes
-      constructor: (@editor)->
-        @options = @editor.options
-        @first = @options.getFirst()
-        @updates = {}
-        @removes = {}
-        @oldBlocks = {}
-      getCopy: (id)-> @editor.getCopy id
-      getChangedBlock: (id)-> @updates[id] ? @options.getBlock id
-      getUpdateBlock: (id)-> @updates[id] ? (@updates[id] = @getCopy id)
-      getOldBlock: (id)-> @oldBlocks[id] ? @options.getBlock id
-      insertBlock: (newBlock, prevId)->
-        if !newBlock._id then newBlock._id = @options.newId()
-        @updates[newBlock._id] = newBlock
-        if prevId
-          newBlock.prev = prevId
-          if prev = @getUpdateBlock prevId
-            nextId = prev.next
-            prev.next = newBlock._id
-            @updates[prevId] = prev
-        else
-          nextId = @first
-          @first = newBlock._id
-        if newBlock.next = nextId
-          next = @getUpdateBlock nextId
-          next.prev = newBlock._id
-          @updates[nextId] = next
-        newBlock._id
-      removeBlock: (block)->
-        id = block._id
-        item = @getChangedBlock id
-        prev = @getUpdateBlock block.prev
-        next = @getUpdateBlock block.next
-        if !prev
-          if @first != id then console.log "Error, removing item with non prev, but it is not the head"
-          else @first = item.next
-        delete @updates[id]
-        @removes[id] = true
-        if prev && prev.next == id
-          prev.next = item.next
-        if next && next.prev == id
-          next.prev = item.prev
-      updateBlock: (block, link)->
-        if link
-          old = @getChangedBlock block._id
-          block.prev = old.prev
-          block.next = old.next
-        @updates[block._id] = block
-      updateBlocks: (num, oldBlocks, newBlocks, prevId)->
-        for i in [0 ... num]
-          b = oldBlocks.pop()
-          n = newBlocks.pop()
-          prevId = n._id = b._id
-          if n.text != b.text then @updateBlock n, true
-        prevId
-      applyChanges: ->
-        for id of @removes
-          $("##{id}").remove()
-          if @saveBlock id
-            delete @options.blocks[id]
-        for id, block of @updates
-          @saveBlock id
-          @options.blocks[id] = block
-        @options.first = @first
-      saveBlock: (id)-> @oldBlocks[id] = @options.getBlock(id)
-
 BasicOptions class
 ==================
 BasicOptions is an opinionated default options class that encourages using a "data-type" attribute to mark blocks in the DOM and a "data-noncontent" attribute to mark items that are not part of the content.
@@ -592,21 +473,28 @@ BasicOptions is an opinionated default options class that encourages using a "da
         @blocks = {}
         @first = null
         @idCounter = 0
-        @removes = {}
-        @updates = {}
       setEditor: (@editor)->
-      newId: -> "block-#{@idCounter++}"
-      newBlocks: (blockList)->
-        @blocks = {}
-        prev = null
-        for block in blockList
-          block._id = @newId()
-          if prev
-            block.prev = prev._id
-            prev.next = block._id
-          prev = block
+      newId: -> "block#{@idCounter++}"
+      replaceBlocks: (startId, count, newBlocks)->
+        if startId
+          oldBlocks = for i in [0...count]
+            startId = (block = @blocks[startId]).next
+            block
+          prev = @blocks[oldBlocks[0].prev]
+          spliceNext = last(oldBlocks).next
+        else
+          spliceNext = @first
+          oldBlocks = []
+        for block, i in newBlocks
+          block._id = if i < oldBlocks.length then oldBlocks[i]._id else @newId()
+          if prev then link prev, block
+          else @first = block._id
           @blocks[block._id] = block
-        @first = blockList[0]._id
+          prev = block
+        if spliceNext then link last(newBlocks), @blocks[spliceNext]
+        for oldBlock in oldBlocks = oldBlocks.slice newBlocks.length
+          delete @blocks[oldBlock._id]
+        oldBlocks
       mousedown: (e)->
       getFirst: -> @first
       getBlock: (id)-> @blocks[id]
@@ -619,7 +507,7 @@ BasicOptions is an opinionated default options class that encourages using a "da
       getContainer: (node)-> $(node).closest('[data-type]')[0]
       load: (el, text)->
         idCounter = 0
-        @newBlocks @parseBlocks text
+        @replaceBlocks null, 0, @parseBlocks text
         el.html @renderBlocks()
       renderBlocks: ->
         result = ''
@@ -627,10 +515,13 @@ BasicOptions is an opinionated default options class that encourages using a "da
         while next && [html, next] = @renderBlock @getBlock next
           result += html
         result
-      isMergeable: (newBlock, neighbor, oldBlock)-> throw new Error "options.isMergeable(newBlock, oldBlock, neighbor) is not implemented"
       parseBlocks: (text)-> throw new Error "options.parseBlocks(text) is not implemented"
       renderBlock: (block)-> throw new Error "options.renderBlock(block) is not implemented"
-      edit: (func)-> throw new Error "options.edit(func) is not implemented"
+      edit: (startId, count, newBlocks)-> throw new Error "options.edit(func) is not implemented"
+
+    link = (prev, next)->
+      prev.next = next._id
+      next.prev = prev._id
 
 getEventChar(e)
 ===============
@@ -716,5 +607,6 @@ Exports
     root.BasicOptions = BasicOptions
     root.defaultBindings = defaultBindings
     root.last = last
+    root.link = link
 
     if window? then window.EditCore = root else module.exports = root
