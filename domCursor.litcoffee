@@ -264,7 +264,7 @@ the previous text node (node, node.length)
           n = n.next()
         n.emptyNext()
 
-**hasAttribute** returns true if the node is an element and has the attribute
+**hasAttribute** returns true if the node is an element and has the attribute or if it is a text node and its parent has the attribute
 
       hasAttribute: (a)-> @node? && @node.nodeType == @node.ELEMENT_NODE && @node.hasAttribute a
 
@@ -642,7 +642,8 @@ Utility functions
 
 These are available as properties on DOMCursor.
 
-    # Thanks to rangy for this: https://github.com/timdown/rangy
+Thanks to (rangy)[this: https://github.com/timdown/rangy] for the isCollapsed logic
+
     isCollapsed = (node)->
       if node
         type = node.nodeType

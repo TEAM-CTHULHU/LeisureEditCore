@@ -1,71 +1,29 @@
     {
-      parseOrgMode,
-      orgDoc,
-      Source,
-      Results,
-      Headline,
-      SimpleMarkup,
-      Fragment,
+      parseOrgMode
+      orgDoc
+      Source
+      Results
+      Headline
+      SimpleMarkup
+      Fragment
     } = window.Org
     {
-      last,
-      BasicOptions,
-    } = EditCore = window.EditCore
+      last
+      DataStore
+      DataStoreEditingOptions
+      blockText
+    } = LeisureEditCore = window.LeisureEditCore
 
-    class OrgEditing extends BasicOptions
-      constructor: ->
-        super()
-        @rerender = {}
-      moved: (editor)->
-        {blockId, offset} = editor.getBlockLocation()
-        if blockId
-          block = @blocks[blockId]
-          text = block.text.substring(0, offset)
-          lines = text.split('\n')
-          line = lines.length
-          cur = blockId
-          while block.prev
-            block = @blocks[block.prev]
-            line += block.text.split('\n').length - 1
-          $("#status").html "Block: #{blockId}#{numSpan ''} line: #{numSpan line} col: #{numSpan last(lines)?.length ? 0} block line: #{numSpan lines.length}"
-          return
-        $("#status").html "No selection"
-        #cur = @first
-        #lines = 0
-        #while cur && curBlock = @blocks[cur]
-        #  if cur._id == blockId
-        #    $("#status").html "Line: #{pos.line}, col: #{pos.column}"
-        #    break
-        #  cur = curBlock.next
-      parseBlocks: (text)-> orgDoc parseOrgMode text.replace /\r\n/g, '\n'
-      replaceBlocks: (startId, count, newBlocks)->
-        super startId, count, newBlocks
+    orgEditing = null
+    plainEditing = null
+    data = null
+
+    class OrgData extends DataStore
+      makeChange: (changes)->
+        result = super changes
         @findParents()
         @findChildren()
-      edit: (startId, count, newBlocks)->
-        removed = @replaceBlocks startId, count, newBlocks, true
-        #for block in removed
-        #  $("##{block._id}").remove()
-        @editor.node.html @renderBlocks()
-        $("#source").html escapeHtml (block.text for block in @blockList()).join ''
-      setRemoveRerender: (id)->
-        while @removes[id]
-          id = @parents[id]
-        if id then @rerender[id] = true
-      setUpdateRerender: (newBlock)->
-        oldBlock = @getOldBlock newBlock._id
-        if !oldBlock then @rerender[newBlock._id] = true
-        else
-          np = @parents[newBlock._id]
-          op = @oldParents[oldBlock._id]
-          if np == op then @rerender[newBlock._id] = true
-          else
-            $("##{newBlock._id}").remove()
-            if np then @rerender[np] = true
-            else @rerender[newBlock._id] = true
-            if op then @rerender[op] = true
-      getChangedBlock: (id)-> @changes.getChangedBlock id
-      getOldBlock: (id)-> @changes.getOldBlock id
+        result
       findParents: ->
         parents = @parents = {}
         @findStructure @first, (parent, child)-> parents[child._id] = parent?._id
@@ -76,7 +34,7 @@
         @findStructure @first, (parent, child)=>
           parentId = if parent then parent._id else 'TOP'
           childList = (children[parentId] ? (children[parentId] = []))
-          prev = @getBlock last childList
+          prev = @blocks[last childList]
           childList.push child._id
           if prev
             child.previousSibling = prev._id
@@ -85,7 +43,7 @@
         original = @blocks[blockId]
         if original.type == 'headline'
           ancestors = []
-          while blockId && block = @blocks[blockId]
+          while blockId && block = @getBlock blockId
             parent = last ancestors
             if block.type == 'headline'
               if !parent || block.level > parent.level then ancestors.push block
@@ -98,31 +56,50 @@
             func parent, block
             blockId = block.next
         else func null, original
-      rerenderBlock: (block)->
-        if block
-          [html] = @renderBlock block
-          if (node = $("##{block._id}")).length
-            node.replaceWith html
-          else if block.nextSibling && (next = $("##{block.nextSibling}")).length
-            next.before html
-          else if block.previousSibling && (prev = $("##{block.previousSibling}")).length
-            prev.after html
-          else $(@editor.node).append html
+
+    class PlainEditing extends DataStoreEditingOptions
+      parseBlocks: (text)-> orgDoc parseOrgMode text.replace /\r\n/g, '\n'
+      renderBlock: (block)-> ["<span id='#{block._id}' data-block>#{escapeHtml block.text}</span>", block.next]
+      setEditor: (@editor)->
+        @editor.on 'moved', =>
+          {blockId, offset} = @editor.getBlockLocation()
+          if blockId
+            text = blockText(@blockList()).substring(0, offset)
+            lines = text.split('\n')
+            line = lines.length
+            $("#plainStatus").html "Line: #{numSpan line} col: #{numSpan last(lines)?.length ? 0}"
+            return
+          $("#plainStatus").html "No selection"
+
+    class OrgEditing extends DataStoreEditingOptions
+      parseBlocks: (text)-> orgDoc parseOrgMode text.replace /\r\n/g, '\n'
       renderBlock: (block)->
         html = if block.type == 'headline'
-          "<div #{blockAttrs block} contenteditable='false'>#{blockLabel block}<div contenteditable='true'>#{contentSpan block.text, 'text'}#{(@renderBlock(@blocks[childId])[0] for childId in @children[block._id] ? []).join ''}</div></div>"
+          "<div #{blockAttrs block} contenteditable='false'>#{blockLabel block}<div contenteditable='true'>#{contentSpan block.text, 'text'}#{(@renderBlock(@getBlock childId)[0] for childId in @data.children[block._id] ? []).join ''}</div></div>"
         else if block.type == 'code'
           "<span #{blockAttrs block}>#{blockLabel block}#{escapeHtml block.text}</span>"
         else "<span #{blockAttrs block}>#{blockLabel block}#{escapeHtml block.text}</span>"
         [html, block.nextSibling]
-      load: (el, text)->
-        super el, text
-        $("#source").html escapeHtml (block.text for block in @blockList()).join ''
+      setEditor: (@editor)->
+        @editor.on 'moved', =>
+          {blockId, offset} = @editor.getBlockLocation()
+          if blockId
+            block = @getBlock blockId
+            text = block.text.substring(0, offset)
+            lines = text.split('\n')
+            line = lines.length
+            cur = blockId
+            while block.prev
+              block = @getBlock block.prev
+              line += block.text.split('\n').length - 1
+            $("#orgStatus").html "Block: #{blockId}#{numSpan ''} line: #{numSpan line} col: #{numSpan last(lines)?.length ? 0} block line: #{numSpan lines.length}"
+            return
+          $("#orgStatus").html "No selection"
 
     numSpan = (n)-> "<span class='status-num'>#{n}</span>"
 
     blockLabel = (block)->
-      "<span class='blockLabel' contenteditable='false'>[#{block.type}]</span>"
+      "<span class='blockLabel' contenteditable='false' data-noncontent>[#{block.type}]</span>"
 
     blockAttrs = (block)->
       extra = ''
@@ -146,7 +123,8 @@
       else str
 
     $(document).ready ->
-      #debugger
-      editor = new EditCore $("#editor"), new OrgEditing()
-      editor.loadURL "example.lorg"
+      data = new OrgData()
+      editor = new LeisureEditCore $("#orgEditor"), orgEditing = new OrgEditing data
+      new LeisureEditCore $("#source"), plainEditing = new PlainEditing data
       window.ED = editor
+      setTimeout (->editor.loadURL "example.lorg"), 1

@@ -1,4 +1,4 @@
-#editor {
+.editor {
     white-space: pre-line;
     max-height: calc(100% - 2em);
     overflow: auto;
@@ -45,7 +45,7 @@
     display: inline-block;
 }
 
-#status-holder {
+.status-holder {
     height: 1em;
     border: solid black 2px;
 }
@@ -58,7 +58,8 @@
 }
 #source {
     white-space: pre;
-    max-height: calc(100% - 1em);
+    max-height: calc(100% - 2.5em);
+    margin-bottom: 0.5em;
     border: solid black 2px;
     padding: 5px;
     overflow: auto;

@@ -1,14 +1,14 @@
-EditCore
+LeisureEditCore
 ========
 Copyright (C) 2015, Bill Burdick, Roy Riggs, TEAM CTHULHU
 
 Licensed with ZLIB license (see "License", below).
 
-Welcome to EditCore, a tiny library for HTML5 that you can use to make
+Welcome to LeisureEditCore, a tiny library for HTML5 that you can use to make
 your own editors.  You can find it on
-[Github](https://github.com/zot/EditCore).  EditCore what
+[Github](https://github.com/zot/LeisureEditCore).  LeisureEditCore what
 [Leisure's](https://github.com/zot/Leisure) editor, extracted out into
-a small HTML5 library.  EditCore is pluggable with an options object
+a small HTML5 library.  LeisureEditCore is pluggable with an options object
 that contains customization hooks.  Code and examples are in
 Coffeescript (a JS build is provided as a convenience).
 
@@ -19,7 +19,7 @@ i.e. backspace/delete/cut/replace should not delete hidden text.
 
 Basic Idea
 ==========
-EditCore edits a doubly-linked list of "blocks" that can render as DOM nodes.
+LeisureEditCore edits a doubly-linked list of "blocks" that can render as DOM nodes.
 
 The rendered DOM tree contains the full text of the backing structure, along with
 ids from it.  Some of the text may not be visible and there may be a lot of items
@@ -32,18 +32,18 @@ When the user makes a change, the editor:
 3. rerenders the corrsponding DOM
 4. replaces the new DOM into the page
 
-Using/Installing EditCore
+Using/Installing LeisureEditCore
 ===================
 Make sure your webpage loads the javascript files in the `build` directory.  Follow
 the instructions below to use it.
 
-EditCore
-========
-Create an EditCore object like this: `new EditCore element, options`.
+LeisureEditCore
+===============
+Create a LeisureEditCore object like this: `new LeisureEditCore element, options`.
 
 `element` is the HTML element that you want to contain editable code.
 
-`options` is an object that tells EditCore things like how to convert text
+`options` is an object that tells LeisureEditCore things like how to convert text
 to a list of block objects (see below).
 
 Blocks
@@ -57,31 +57,35 @@ Blocks
 
 Options
 =======
-When you make an EditCore instance, you pass in an options object.  The easiest
-way to make options is to inherit from BasicOptions.  BasicOptions is an opinionated
-options class.
+When you make a LeisureEditCore instance, you must provide an options
+object.  BasicEditingOptions is the base options class and
+DataStoreEditingOptions is more deluxe and connects to an
+observable data store (you can use an instance of DataStore or
+adapt one of your own).
 
-Hooks you must define for BasicOptions objects
-----------------------------------------------
+Hooks you must define for BasicEditingOptions objects
+-----------------------------------------------------
 Here are the hook methods you need to provide:
 
-* `parseBlocks(text) -> blocks`: parse text into array of blocks -- DO NOT assign _id, prev, or next!
-* `renderBlock(block) -> html`: render a block (and potentially its children) and return the HTML and the next blockId if there is one
-  Block DOM (DOM for a block) must be a single element with the same id as the block.
-  Block DOM may contain nested block DOM.
-* `edit(startId, count, newBlocks) -> any`: The editor calls this after the user has attempted an edit.  It should make the requested change (probably by calling `replaceBlocks`, below) and rerender the appropriate DOM.
+* `parseBlocks(text) -> blocks`: parse text into array of blocks -- DO NOT provide _id, prev, or next, they may be overwritten!
+* `renderBlock(block) -> [html, next]`: render a block (and potentially its children) and return the HTML and the next blockId if there is one
+  * Block DOM (DOM for a block) must be a single element with the same id as the block.
+  * Block DOM may contain nested block DOM.
+  * each block's DOM should have the same id as the block and have a data-block attribute
+  * non-editable parts of the DOM should have contenteditable=false
+  * completely skipped parts should be non-editable and have a data-noncontent attribute
+* `edit(oldBlocks, newBlocks) -> any`: The editor calls this after the user has attempted an edit.  It should make the requested change (probably by calling `replaceBlocks`) and rerender the appropriate DOM.
 
 After that, you must render the changes into HTML and replace them into the element.
 
-Properties of BasicOptions
---------------------------
-* `blocks {}`: map of id -> block
+Properties of BasicEditingOptions
+---------------------------------
+* `blocks {id -> block}`: block table
 * `first`: id of first block
-* `bindings`: a map of bindings (can use EditCore.defaultBindings)
-  each binding takes args (editor, event, selectionRange)
+* `bindings {keys -> binding(editor, event, selectionRange)}`: a map of bindings (can use LeisureEditCore.defaultBindings)
 
-Methods of BasicOptions
------------------------
+Methods of BasicEditingOptions
+------------------------------
 * `getBlock(id) -> block?`: get the current block for id
 * `getContainer(node) -> Node?`: get block DOM node containing for a node
 * `getFirst() -> blockId`: get the first block id
@@ -90,15 +94,16 @@ Methods of BasicOptions
 * `topRect() -> rect?`: returns null or the rectangle of a toolbar at the page top
 * `blockColumn(pos) -> colNum`: returns the start column on the page for the current block
 * `load(el, text) -> void`: parse text into blocks and replace el's contents with rendered DOM
-* `replaceBlocks(startId, count, newBlocks) -> removedBlocks`: override this if you need to link up the blocks, etc., like so that `renderBlock()` can return the proper next id, for instance.
+* `replaceBlocks(oldBlocks, newBlocks) -> removedBlocks`: override this if you need to link up the blocks, etc., like so that `renderBlock()` can return the proper next id, for instance.
 
 Packages we use
 ===============
-- [DOMCursor](https://github.com/zot/DOMCursor), for finding text locations in DOM trees
+- [jQuery](http://jquery.com/), for DOM slicing and dicing
+- [DOMCursor](https://github.com/zot/DOMCursor) (included), for finding text locations in DOM trees
 
 Building
 ========
-If you modify EditCore and want to build it, you can use the Cakefile.  It needs the
+If you modify LeisureEditCore and want to build it, you can use the Cakefile.  It needs the
 `which` npm package (`npm install which`).
 
 License
@@ -125,7 +130,7 @@ misrepresented as being the original software.
 
 Code
 ====
-Here is the code for [EditCore](https://github.com/zot/EditCore).
+Here is the code for [LeisureEditCore](https://github.com/zot/LeisureEditCore).
 
     {
       selectRange,
@@ -191,11 +196,31 @@ Here is the code for [EditCore](https://github.com/zot/EditCore).
       #'C-N': keyFuncs.nextLine
       #'C-X C-F': keyFuncs.save
 
-EditCore class
-==============
+`idCounter`: id number for next created block
 
-    class EditCore
+    idCounter = 0
+
+Observable class
+================
+
+    class Observable
+      constructor: ->
+        @listeners = {}
+      on: (type, callback)->
+        if !@listeners[type] then @listeners[type] = []
+        @listeners[type].push callback
+      trigger: (type, args...)->
+        for listener in @listeners[type] || []
+          listener.apply null, args
+
+LeisureEditCore class
+=====================
+Events:
+  `moved`: the cursor moved
+
+    class LeisureEditCore extends Observable
       constructor: (@node, @options)->
+        super()
         @node
           .attr 'contenteditable', 'true'
           .attr 'spellcheck', 'false'
@@ -250,7 +275,7 @@ EditCore class
             .mutable()
             .countChars targ.node, targ.pos
         else -1
-      loadURL: (url)-> $.get url, (text)=> @options.load @node, text
+      loadURL: (url)-> $.get url, (text)=> @options.load text
       handleInsert: (e, s, text)->
         e.preventDefault()
         if s.type == 'Caret'
@@ -294,28 +319,26 @@ EditCore class
             @editBlocks blocks, pos, stop, '', pos
         else setTimeout (->alert 'Selection not supported yet'), 1
 
-editBlocks: at this point, place the cursor after the newContent
+editBlocks: at this point, just place the cursor after the newContent, later
+on it can select if start and end are different
 
       editBlocks: (blocks, start, end, newContent)->
         caret = start + newContent.length
         oldText = (block.text for block in blocks).join ''
         newText = oldText.substring(0, start) + newContent + oldText.substring end
         {oldBlocks, newBlocks, newText} = @changeStructure blocks, newText
-        startId = oldBlocks[0]._id
-        count = oldBlocks.length
-        if startId
-          cur = startId
-          while cur != blocks[0]._id
-            block = @options.getBlock(cur)
-            caret += block.text.length
-            cur = block.next
-          if prevBlock = @options.getBlock @options.getBlock(startId).prev
+        if oldBlocks.length
+          for oldBlock in oldBlocks
+            if oldBlock._id == blocks[0]._id then break
+            if oldBlock._id != blocks[0]._id
+              caret += oldBlock.text.length
+          if prevBlock = @options.getBlock oldBlocks[0].prev
             caret += prevBlock.text.length
-        @options.edit startId, count, newBlocks
+        @options.edit oldBlocks, newBlocks
         holder = if prevBlock then $("##{prevBlock._id}") else @node[0]
         @domCursorForTextPosition(holder, caret).moveCaret()
 
-`changeStructure(oldBlocks, newText)`: Change oldBlocks into newBlocks and rerender the changed parts of the doc
+`changeStructure(oldBlocks, newText)`: Compute blocks affected by transforming oldBlocks into newText
 
       changeStructure: (oldBlocks, newText)->
         oldBlocks = oldBlocks.slice()
@@ -363,11 +386,11 @@ editBlocks: at this point, place the cursor after the newContent
           e.preventDefault()
           alert 'PASTE not supported yet'
         @node.on 'mousedown', (e)=>
-          @options.moved this
+          @trigger 'moved', this
           @setCurKeyBinding null
         @node.on 'mouseup', (e)=>
           @adjustSelection e
-          @options.moved this
+          @trigger 'moved', this
         @node.on 'keyup', (e)=> @handleKeyup e
         @node.on 'keydown', (e)=>
           @modCancelled = false
@@ -451,7 +474,7 @@ editBlocks: at this point, place the cursor after the newContent
         pos = @domCursorForCaret()
         pos.moveCaret()
         pos.show @options.topRect()
-        @options.moved this
+        @trigger 'moved', this
       moveForward: ->
         start = pos = @domCursorForCaret().firstText().save()
         while !pos.isEmpty() && @domCursorForCaret().firstText().equals start
@@ -491,40 +514,47 @@ editBlocks: at this point, place the cursor after the newContent
           prev = pos
         pos
 
-`moveToBestPosition(pos, prev, linePos)` tries to move to the best position in the HTML text.  If pos is closer to the goal, return it, otherwise move to prev and return prev.
+`moveToBestPosition(pos, prev, linePos)` tries to move the caret to the best position in the HTML text.  If pos is closer to the goal, return it, otherwise move to prev and return prev.
 
       moveToBestPosition: (pos, prev, linePos)->
         if linePos == pos || Math.abs(@options.blockColumn(pos) - @movementGoal) < Math.abs(@options.blockColumn(prev) - @movementGoal)
           pos
         else prev.moveCaret()
 
-BasicOptions class
-==================
-BasicOptions is an opinionated default options class that requires using a "data-block" attribute to mark blocks in the DOM and a "data-noncontent" attribute to mark items that are not part of the content.
+BasicEditingOptions class
+=========================
+BasicEditingOptions is an the options base class.
 
-    class BasicOptions
+Events:
+  `load`: new text loaded into the editor
 
-Hook methods
+    class BasicEditingOptions extends Observable
 
-`parseBlocks(text) -> blocks`: parse text into array of blocks -- DO NOT assign _id, prev, or next!
+Hook methods (required)
+-----------------------
+
+`parseBlocks(text) -> blocks`: parse text into array of blocks -- DO NOT provide _id, prev, or next, they may be overwritten!
 
       parseBlocks: (text)-> throw new Error "options.parseBlocks(text) is not implemented"
 
-`renderBlock(block) -> html`: render a block (and potentially its children) and return the HTML and the next blockId if there is one
-  Block DOM (DOM for a block) must be a single element with the same id as the block.
-  Block DOM may contain nested block DOM.
+`renderBlock(block) -> [html, next]`: render a block (and potentially its children) and return the HTML and the next blockId if there is one
+* Block DOM (DOM for a block) must be a single element with the same id as the block.
+* Block DOM may contain nested block DOM.
 
       renderBlock: (block)-> throw new Error "options.renderBlock(block) is not implemented"
 
-`edit(startId, count, newBlocks) -> any`: The editor calls this after the user has attempted an edit.  It should make the requested change (probably by calling `replaceBlocks`, below) and rerender the appropriate DOM.
+`edit(oldBlocks, newBlocks)`: The editor calls this after the user has attempted an edit.  It should make the requested change (probably by calling `replaceBlocks`, below) and rerender the appropriate DOM.
 
-      edit: (startId, count, newBlocks)-> throw new Error "options.edit(func) is not implemented"
+      edit: (oldBlocks, newBlocks)-> throw new Error "options.edit(func) is not implemented"
 
 Main code
+---------
 
       constructor: ->
 
-`blocks {}`: map of id -> block
+        super()
+
+`blocks {id -> block}`: block table
 
         @blocks = {}
 
@@ -532,45 +562,55 @@ Main code
 
         @first = null
 
-`idCounter`: id number for next created block
-
-        @idCounter = 0
-      setEditor: (@editor)->
-      newId: -> "block#{@idCounter++}"
-
-`replaceBlocks(startId, count, newBlocks) -> removedBlocks`: override this if you need to link up the blocks, etc., like so that `renderBlock()` can return the proper next id, for instance.
-
-      replaceBlocks: (startId, count, newBlocks)->
-        if startId
-          oldBlocks = for i in [0...count]
-            startId = (block = @blocks[startId]).next
-            block
-          prev = @blocks[oldBlocks[0].prev]
-          spliceNext = last(oldBlocks).next
-        else
-          spliceNext = @first
-          oldBlocks = []
-        for block, i in newBlocks
-          block._id = if i < oldBlocks.length then oldBlocks[i]._id else @newId()
-          if prev then link prev, block
-          else @first = block._id
-          @blocks[block._id] = block
-          prev = block
-        if spliceNext then link last(newBlocks), @blocks[spliceNext]
-        for oldBlock in oldBlocks = oldBlocks.slice newBlocks.length
-          delete @blocks[oldBlock._id]
-        oldBlocks
-
 `getFirst() -> blockId`: get the first block id
 
       getFirst: -> @first
+      setEditor: (@editor)->
+      newId: -> "block#{idCounter++}"
+
+      copyBlock: (block)->
+        bl = {}
+        for k,v of block
+          bl[k] = v
+        bl
+
+`replaceBlocks(oldBlocks, newBlocks) -> removedBlocks`: override this if you need to link up the blocks, etc., like so that `renderBlock()` can return the proper next id, for instance.
+
+      replaceBlocks: (oldBlocks, newBlocks)->
+        newBlockMap = {}
+        changes = removes: removes = {}, sets: newBlockMap
+        spliceNext = if oldBlocks.length then last(oldBlocks).next else @getFirst()
+        for oldBlock in oldBlocks[newBlocks.length...oldBlocks.length]
+          removes[oldBlock._id] = true
+        for newBlock, i in newBlocks
+          if i < oldBlocks.length
+            oldBlock = oldBlocks[i]
+            newBlock._id = oldBlock._id
+            newBlock.prev = oldBlock.prev
+            newBlock.next = oldBlock.next
+          else
+            newBlock._id = @newId()
+            if i > 0 then link newBlocks[i - 1], newBlock
+          newBlockMap[newBlock._id] = newBlock
+        changes.first = if !oldBlocks.length then newBlocks[0]._id else @getFirst()
+        if (oldBlocks.length != newBlocks.length) && spliceNext
+          next = @copyBlock @getBlock spliceNext
+          newBlockMap[next._id] = next
+          link last(newBlocks), next
+        @change changes
+        changes
+      change: ({first, removes, sets})->
+        if first then @first = first
+        for id in removes
+          delete @blocks[id]
+        for id, block of sets
+          @blocks[id] = block
 
 `getBlock(id) -> block?`: get the current block for id
 
       getBlock: (id)-> @blocks[id]
 
-`bindings`: a map of bindings (can use EditCore.defaultBindings)
-  each binding takes args (editor, event, selectionRange)
+`bindings {keys -> binding(editor, event, selectionRange)}`: a map of bindings (can use LeisureEditCore.defaultBindings)
 
       bindings: defaultBindings
 
@@ -589,30 +629,84 @@ Main code
 `domCursor(node, pos) -> DOMCursor`: return a domCursor that skips over non-content
 
       domCursor: (node, pos)->
-        new DOMCursor(node, pos).addFilter (n)-> isEditable(n.node) # || 'skip'
+        new DOMCursor(node, pos).addFilter (n)-> (n.hasAttribute('data-noncontent') && 'skip') || isEditable(n.node)
 
 `getContainer(node) -> Node?`: get block DOM node containing for a node
 
-      getContainer: (node)-> $(node).closest('[data-block]')[0]
+      getContainer: (node)->
+        if @editor.node[0].compareDocumentPosition(node) & Element.DOCUMENT_POSITION_CONTAINED_BY
+          $(node).closest('[data-block]')[0]
 
 `load(el, text) -> void`: parse text into blocks and replace el's contents with rendered DOM
 
-      load: (el, text)->
-        idCounter = 0
-        @replaceBlocks null, 0, @parseBlocks text
-        el.html @renderBlocks()
+      load: (text)->
+        @replaceBlocks @blockList(), @parseBlocks text
+        @editor.node.html @renderBlocks()
+        @trigger 'load'
+      blockCount: ->
+        c = 0
+        for b of @blocks
+          c++
+        c
       blockList: ->
-        next = @first
+        next = @getFirst()
         while next
           bl = @getBlock next
           next = bl.next
           bl
       renderBlocks: ->
         result = ''
-        next = @first
+        next = @getFirst()
         while next && [html, next] = @renderBlock @getBlock next
           result += html
         result
+
+DataStore
+=========
+Events:
+  `change {adds, updates, removes, oldFirst}`: data changed
+
+    class DataStore extends Observable
+      constructor: ->
+        super()
+        @blocks = {}
+      getBlock: (id)-> @blocks[id]
+      blockList: ->
+        next = @first
+        while next
+          bl = @blocks[next]
+          next = bl.next
+          bl
+      change: (changes)-> @triggerChange @makeChange changes
+      makeChange: ({first, removes, sets})->
+        old = {}
+        newBlocks = {}
+        removed = []
+        oldFirst = first
+        @first = first
+        for id of removes
+          if bl = @blocks[id]
+            removed.push bl
+            delete @blocks[id]
+        for id, block of sets
+          if @blocks[id] then old[id] = block
+          else newBlocks[id] = block
+          @blocks[id] = block
+        adds: newBlocks, updates: old, removes: removed, oldFirst: first
+      triggerChange: (changes)-> @trigger 'change', changes
+
+DataStoreEditingOptions
+=======================
+
+    class DataStoreEditingOptions extends BasicEditingOptions
+      constructor: (@data)->
+        super()
+        @data.on 'change', (change)=> @changed change
+      edit: (oldBlocks, newBlocks)-> @replaceBlocks oldBlocks, newBlocks
+      getBlock: (id)-> @data.getBlock id
+      getFirst: (first)-> @data.first
+      change: (changes)-> @data.change changes
+      changed: (change)-> @editor.node.html @renderBlocks()
 
 Utilities
 =========
@@ -624,6 +718,8 @@ Utilities
     link = (prev, next)->
       prev.next = next._id
       next.prev = prev._id
+
+    blockText = (blocks)-> (block.text for block in blocks).join ''
 
 getEventChar(e)
 ===============
@@ -705,10 +801,14 @@ Utilities
 Exports
 =======
 
-    root = EditCore
-    root.BasicOptions = BasicOptions
+    root = LeisureEditCore
+    root.Observable = Observable
+    root.BasicEditingOptions = BasicEditingOptions
+    root.DataStore = DataStore
+    root.DataStoreEditingOptions = DataStoreEditingOptions
     root.defaultBindings = defaultBindings
     root.last = last
     root.link = link
+    root.blockText = blockText
 
-    if window? then window.EditCore = root else module.exports = root
+    if window? then window.LeisureEditCore = root else module.exports = root
