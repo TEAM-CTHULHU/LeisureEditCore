@@ -58,8 +58,10 @@
         else func null, original
 
     class PlainEditing extends DataStoreEditingOptions
+      nodeForId: (id)-> $("#plain-#{id}")
+      idForNode: (node)-> node.id.match(/^plain-(.*)$/)?[1]
       parseBlocks: (text)-> orgDoc parseOrgMode text.replace /\r\n/g, '\n'
-      renderBlock: (block)-> ["<span id='#{block._id}' data-block>#{escapeHtml block.text}</span>", block.next]
+      renderBlock: (block)-> ["<span id='plain-#{block._id}' data-block>#{escapeHtml block.text}</span>", block.next]
       setEditor: (@editor)->
         @editor.on 'moved', =>
           {blockId, offset} = @editor.getBlockLocation()
@@ -72,6 +74,8 @@
           $("#plainStatus").html "No selection"
 
     class OrgEditing extends DataStoreEditingOptions
+      nodeForId: (id)-> $("#fancy-#{id}")
+      idForNode: (node)-> node.id.match(/^fancy-(.*)$/)?[1]
       parseBlocks: (text)-> orgDoc parseOrgMode text.replace /\r\n/g, '\n'
       renderBlock: (block)->
         html = if block.type == 'headline'
@@ -104,7 +108,7 @@
     blockAttrs = (block)->
       extra = ''
       if block.type == 'headline' then extra += " data-headline='#{escapeAttr block.level}'"
-      "id='#{escapeAttr block._id}' data-block='#{escapeAttr block._id}' data-type='#{escapeAttr block.type}'#{extra}"
+      "id='fancy-#{escapeAttr block._id}' data-block='#{escapeAttr block._id}' data-type='#{escapeAttr block.type}'#{extra}"
 
     contentSpan = (str, type)->
       str = escapeHtml str

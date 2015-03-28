@@ -99,12 +99,21 @@ PlainEditing = (function(superClass) {
     return PlainEditing.__super__.constructor.apply(this, arguments);
   }
 
+  PlainEditing.prototype.nodeForId = function(id) {
+    return $("#plain-" + id);
+  };
+
+  PlainEditing.prototype.idForNode = function(node) {
+    var ref2;
+    return (ref2 = node.id.match(/^plain-(.*)$/)) != null ? ref2[1] : void 0;
+  };
+
   PlainEditing.prototype.parseBlocks = function(text) {
     return orgDoc(parseOrgMode(text.replace(/\r\n/g, '\n')));
   };
 
   PlainEditing.prototype.renderBlock = function(block) {
-    return ["<span id='" + block._id + "' data-block>" + (escapeHtml(block.text)) + "</span>", block.next];
+    return ["<span id='plain-" + block._id + "' data-block>" + (escapeHtml(block.text)) + "</span>", block.next];
   };
 
   PlainEditing.prototype.setEditor = function(editor1) {
@@ -135,6 +144,15 @@ OrgEditing = (function(superClass) {
   function OrgEditing() {
     return OrgEditing.__super__.constructor.apply(this, arguments);
   }
+
+  OrgEditing.prototype.nodeForId = function(id) {
+    return $("#fancy-" + id);
+  };
+
+  OrgEditing.prototype.idForNode = function(node) {
+    var ref2;
+    return (ref2 = node.id.match(/^fancy-(.*)$/)) != null ? ref2[1] : void 0;
+  };
 
   OrgEditing.prototype.parseBlocks = function(text) {
     return orgDoc(parseOrgMode(text.replace(/\r\n/g, '\n')));
@@ -197,7 +215,7 @@ blockAttrs = function(block) {
   if (block.type === 'headline') {
     extra += " data-headline='" + (escapeAttr(block.level)) + "'";
   }
-  return "id='" + (escapeAttr(block._id)) + "' data-block='" + (escapeAttr(block._id)) + "' data-type='" + (escapeAttr(block.type)) + "'" + extra;
+  return "id='fancy-" + (escapeAttr(block._id)) + "' data-block='" + (escapeAttr(block._id)) + "' data-type='" + (escapeAttr(block.type)) + "'" + extra;
 };
 
 contentSpan = function(str, type) {

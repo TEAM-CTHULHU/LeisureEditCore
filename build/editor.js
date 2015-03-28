@@ -162,7 +162,7 @@ LeisureEditCore = (function(superClass) {
     s = getSelection();
     if (s.type !== 'None' && (holder = this.options.getContainer(s.anchorNode))) {
       return {
-        blockId: holder.id,
+        blockId: this.options.idForNode(holder),
         offset: this.getTextPosition(holder, s.anchorNode, s.anchorOffset)
       };
     } else {
@@ -229,7 +229,7 @@ LeisureEditCore = (function(superClass) {
     e.preventDefault();
     if (s.type === 'Caret') {
       holder = this.options.getContainer(s.anchorNode);
-      block = this.getCopy(holder.id);
+      block = this.getCopy(this.options.idForNode(holder));
       blocks = [block];
       pos = this.getTextPosition(holder, s.anchorNode, s.anchorOffset);
       return this.editBlocks([block], pos, pos, text != null ? text : getEventChar(e), pos + 1);
@@ -242,7 +242,7 @@ LeisureEditCore = (function(superClass) {
 
   LeisureEditCore.prototype.backspace = function(event, sel, r) {
     var holderId;
-    holderId = this.options.getContainer(sel.anchorNode).id;
+    holderId = this.options.idForNode(this.options.getContainer(sel.anchorNode));
     this.currentBlockIds = [(this.getCopy(holderId))._id];
     return this.handleDelete(event, sel, false, function(text, pos) {
       return true;
@@ -251,7 +251,7 @@ LeisureEditCore = (function(superClass) {
 
   LeisureEditCore.prototype.del = function(event, sel, r) {
     var holderId;
-    holderId = this.options.getContainer(sel.anchorNode).id;
+    holderId = this.options.idForNode(this.options.getContainer(sel.anchorNode));
     this.currentBlockIds = [(this.getCopy(holderId))._id];
     return this.handleDelete(event, sel, true, function(text, pos) {
       return true;
@@ -264,7 +264,7 @@ LeisureEditCore = (function(superClass) {
     if (s.type === 'Caret') {
       c = this.domCursorForCaret().firstText();
       cont = this.options.getContainer(c.node);
-      block = this.getCopy(cont.id);
+      block = this.getCopy(this.options.idForNode(cont));
       pos = this.getTextPosition(cont, c.node, c.pos);
       result = delFunc(block.text, pos);
       blocks = [];
@@ -326,7 +326,7 @@ LeisureEditCore = (function(superClass) {
       }
     }
     this.options.edit(oldBlocks, newBlocks);
-    holder = prevBlock ? $("#" + prevBlock._id) : this.node[0];
+    holder = prevBlock ? this.options.nodeForId(prevBlock._id) : this.node[0];
     return this.domCursorForTextPosition(holder, caret).moveCaret();
   };
 
@@ -465,10 +465,10 @@ LeisureEditCore = (function(superClass) {
       if (!r) {
         r = sel.getRangeAt(0);
       }
-      blocks = (cont = this.options.getContainer(r.startContainer)) ? [cont.id] : [];
+      blocks = (cont = this.options.getContainer(r.startContainer)) ? [this.options.idForNode(cont)] : [];
       if (!(r != null ? r.collapsed : void 0)) {
         cur = blocks[0];
-        end = this.options.getContainer(r.endContainer).id;
+        end = this.options.idForNode(this.options.getContainer(r.endContainer));
         while (cur && cur !== end) {
           if (cur = (this.getCopy(cur)).next) {
             blocks.push(cur);
@@ -676,6 +676,14 @@ BasicEditingOptions = (function(superClass) {
 
   BasicEditingOptions.prototype.getFirst = function() {
     return this.first;
+  };
+
+  BasicEditingOptions.prototype.nodeForId = function(id) {
+    return $("#" + id);
+  };
+
+  BasicEditingOptions.prototype.idForNode = function(node) {
+    return $(node).prop(id);
   };
 
   BasicEditingOptions.prototype.setEditor = function(editor1) {

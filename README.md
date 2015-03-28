@@ -241,7 +241,7 @@ Events:
       getBlockLocation: ->
         s = getSelection()
         if s.type != 'None' && holder = @options.getContainer s.anchorNode
-          blockId: holder.id
+          blockId: @options.idForNode holder
           offset: @getTextPosition holder, s.anchorNode, s.anchorOffset
         else {}
       domCursor: (node, pos)->
@@ -280,17 +280,17 @@ Events:
         e.preventDefault()
         if s.type == 'Caret'
           holder = @options.getContainer(s.anchorNode)
-          block = @getCopy holder.id
+          block = @getCopy @options.idForNode holder
           blocks = [block]
           pos = @getTextPosition holder, s.anchorNode, s.anchorOffset
           @editBlocks [block], pos, pos, (text ? getEventChar e), pos + 1
         else setTimeout (->alert 'Selection not supported yet'), 1
       backspace: (event, sel, r)->
-        holderId = @options.getContainer(sel.anchorNode).id
+        holderId = @options.idForNode @options.getContainer(sel.anchorNode)
         @currentBlockIds = [(@getCopy holderId)._id]
         @handleDelete event, sel, false, (text, pos)-> true
       del: (event, sel, r)->
-        holderId = @options.getContainer(sel.anchorNode).id
+        holderId = @options.idForNode @options.getContainer(sel.anchorNode)
         @currentBlockIds = [(@getCopy holderId)._id]
         @handleDelete event, sel, true, (text, pos)-> true
       handleDelete: (e, s, forward, delFunc)->
@@ -298,7 +298,7 @@ Events:
         if s.type == 'Caret'
           c = @domCursorForCaret().firstText()
           cont = @options.getContainer(c.node)
-          block = @getCopy cont.id
+          block = @getCopy @options.idForNode cont
           pos = @getTextPosition cont, c.node, c.pos
           result = delFunc block.text, pos
           blocks = []
@@ -335,7 +335,7 @@ on it can select if start and end are different
           if prevBlock = @options.getBlock oldBlocks[0].prev
             caret += prevBlock.text.length
         @options.edit oldBlocks, newBlocks
-        holder = if prevBlock then $("##{prevBlock._id}") else @node[0]
+        holder = if prevBlock then @options.nodeForId prevBlock._id else @node[0]
         @domCursorForTextPosition(holder, caret).moveCaret()
 
 `changeStructure(oldBlocks, newText)`: Compute blocks affected by transforming oldBlocks into newText
@@ -412,11 +412,11 @@ on it can select if start and end are different
         if sel.rangeCount == 1
           if !r then r = sel.getRangeAt 0
           blocks = if cont = @options.getContainer(r.startContainer)
-            [cont.id]
+            [@options.idForNode cont]
           else []
           if !r?.collapsed
             cur = blocks[0]
-            end = @options.getContainer(r.endContainer).id
+            end = @options.idForNode @options.getContainer(r.endContainer)
             while cur && cur != end
               if cur = (@getCopy cur).next
                 blocks.push cur
@@ -565,6 +565,8 @@ Main code
 `getFirst() -> blockId`: get the first block id
 
       getFirst: -> @first
+      nodeForId: (id)-> $("##{id}")
+      idForNode: (node)-> $(node).prop(id)
       setEditor: (@editor)->
       newId: -> "block#{idCounter++}"
 
