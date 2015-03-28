@@ -722,7 +722,7 @@ Utilities
     blockText = (blocks)-> (block.text for block in blocks).join ''
 
 getEventChar(e)
-===============
+--------------
 adapted from Vega on [StackOverflow](http://stackoverflow.com/a/13127566/1026782)
 
     _to_ascii =
@@ -773,9 +773,6 @@ adapted from Vega on [StackOverflow](http://stackoverflow.com/a/13127566/1026782
         c = shiftUps[c]
       else c = String.fromCharCode(c)
       c
-
-Utilities
-=========
 
     shiftKey = (c)-> 15 < c < 19
 
