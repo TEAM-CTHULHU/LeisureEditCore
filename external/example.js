@@ -20,6 +20,14 @@ OrgData = (function(superClass) {
     return OrgData.__super__.constructor.apply(this, arguments);
   }
 
+  OrgData.prototype.parseBlocks = function(text) {
+    if (text === '') {
+      return [];
+    } else {
+      return orgDoc(parseOrgMode(text.replace(/\r\n/g, '\n')));
+    }
+  };
+
   OrgData.prototype.makeChange = function(changes) {
     var result;
     result = OrgData.__super__.makeChange.call(this, changes);
@@ -109,7 +117,7 @@ PlainEditing = (function(superClass) {
   };
 
   PlainEditing.prototype.parseBlocks = function(text) {
-    return orgDoc(parseOrgMode(text.replace(/\r\n/g, '\n')));
+    return this.data.parseBlocks(text);
   };
 
   PlainEditing.prototype.renderBlock = function(block) {
@@ -155,7 +163,7 @@ OrgEditing = (function(superClass) {
   };
 
   OrgEditing.prototype.parseBlocks = function(text) {
-    return orgDoc(parseOrgMode(text.replace(/\r\n/g, '\n')));
+    return this.data.parseBlocks(text);
   };
 
   OrgEditing.prototype.renderBlock = function(block) {

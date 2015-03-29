@@ -1,5 +1,5 @@
 .editor {
-    white-space: pre-line;
+    white-space: pre-wrap;
     max-height: calc(100% - 2em);
     overflow: auto;
     padding: 5px;

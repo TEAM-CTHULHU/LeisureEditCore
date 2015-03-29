@@ -338,21 +338,21 @@ LeisureEditCore = (function(superClass) {
       oldText = newText;
       newBlocks = this.options.parseBlocks(newText);
       ref = oldBlocks[0], prevId = ref.prev, firstText = ref.text;
-      if (prevId && firstText !== newBlocks[0].text) {
+      if (prevId && firstText !== (newBlocks.length ? newBlocks[0].text : '')) {
         oldBlocks.unshift(prev = this.options.getBlock(prevId));
         newText = prev.text + newText;
       }
       ref1 = last(oldBlocks), nextId = ref1.next, lastText = ref1.text;
-      if (nextId && lastText !== last(newBlocks).text) {
+      if (nextId && lastText !== (newBlocks.length ? last(newBlocks).text : '')) {
         oldBlocks.push(next = this.options.getBlock(nextId));
         newText += next.text;
       }
     }
-    while (oldBlocks[0].text === newBlocks[0].text) {
+    while (oldBlocks.length && newBlocks.length && oldBlocks[0].text === newBlocks[0].text) {
       oldBlocks.shift();
       newBlocks.shift();
     }
-    while (last(oldBlocks).text === last(newBlocks).text) {
+    while (oldBlocks.length && newBlocks.length && last(oldBlocks).text === last(newBlocks).text) {
       oldBlocks.pop();
       newBlocks.pop();
     }
@@ -696,47 +696,66 @@ BasicEditingOptions = (function(superClass) {
 
   BasicEditingOptions.prototype.copyBlock = function(block) {
     var bl, k, v;
-    bl = {};
-    for (k in block) {
-      v = block[k];
-      bl[k] = v;
+    if (!block) {
+      return null;
+    } else {
+      bl = {};
+      for (k in block) {
+        v = block[k];
+        bl[k] = v;
+      }
+      return bl;
     }
-    return bl;
   };
 
   BasicEditingOptions.prototype.replaceBlocks = function(oldBlocks, newBlocks) {
-    var changes, i, j, l, len, len1, newBlock, newBlockMap, next, oldBlock, ref, removes, spliceNext;
+    var changes, i, j, l, lastBlock, len, len1, newBlock, newBlockMap, next, oldBlock, prev, ref, removes;
     newBlockMap = {};
+    removes = {};
     changes = {
-      removes: removes = {},
-      sets: newBlockMap
+      removes: removes,
+      sets: newBlockMap,
+      first: this.getFirst(),
+      oldBlocks: oldBlocks,
+      newBlocks: newBlocks
     };
-    spliceNext = oldBlocks.length ? last(oldBlocks).next : this.getFirst();
     ref = oldBlocks.slice(newBlocks.length, oldBlocks.length);
     for (j = 0, len = ref.length; j < len; j++) {
       oldBlock = ref[j];
-      removes[oldBlock._id] = true;
+      removes[oldBlock._id] = oldBlock;
     }
+    prev = null;
     for (i = l = 0, len1 = newBlocks.length; l < len1; i = ++l) {
       newBlock = newBlocks[i];
-      if (i < oldBlocks.length) {
-        oldBlock = oldBlocks[i];
+      if (oldBlock = oldBlocks[i]) {
         newBlock._id = oldBlock._id;
         newBlock.prev = oldBlock.prev;
         newBlock.next = oldBlock.next;
       } else {
         newBlock._id = this.newId();
-        if (i > 0) {
-          link(newBlocks[i - 1], newBlock);
+        if (prev) {
+          link(prev, newBlock);
         }
       }
-      newBlockMap[newBlock._id] = newBlock;
+      prev = newBlockMap[newBlock._id] = newBlock;
     }
-    changes.first = !oldBlocks.length ? newBlocks[0]._id : this.getFirst();
-    if ((oldBlocks.length !== newBlocks.length) && spliceNext) {
-      next = this.copyBlock(this.getBlock(spliceNext));
-      newBlockMap[next._id] = next;
-      link(last(newBlocks), next);
+    if (oldBlocks.length !== newBlocks.length) {
+      if (!prev && (prev = this.copyBlock(this.getBlock(oldBlocks[0].prev)))) {
+        newBlockMap[prev._id] = prev;
+      }
+      lastBlock = last(oldBlocks);
+      if (next = this.copyBlock(this.getBlock((lastBlock ? lastBlock.next : this.getFirst())))) {
+        newBlockMap[next._id] = next;
+        if (!(next.prev = prev != null ? prev._id : void 0)) {
+          changes.first = next._id;
+        }
+      }
+      if (prev) {
+        if (!this.getFirst() || removes[this.getFirst()]) {
+          changes.first = newBlocks[0]._id;
+        }
+        prev.next = next != null ? next._id : void 0;
+      }
     }
     this.change(changes);
     return changes;
@@ -745,9 +764,7 @@ BasicEditingOptions = (function(superClass) {
   BasicEditingOptions.prototype.change = function(arg) {
     var block, first, id, j, len, removes, results, sets;
     first = arg.first, removes = arg.removes, sets = arg.sets;
-    if (first) {
-      this.first = first;
-    }
+    this.first = first;
     for (j = 0, len = removes.length; j < len; j++) {
       id = removes[j];
       delete this.blocks[id];
@@ -841,6 +858,50 @@ DataStore = (function(superClass) {
     return this.blocks[id];
   };
 
+  DataStore.prototype.check = function() {
+    var bl, k, next, oldBl, prev, seen;
+    seen = {};
+    next = this.first;
+    prev = null;
+    while (next) {
+      prev = next;
+      if (seen[next]) {
+        throw new Error("cycle in next links");
+      }
+      seen[next] = true;
+      oldBl = bl;
+      bl = this.blocks[next];
+      if (!bl) {
+        throw new Error("Next of " + oldBl.id + " doesn't exist");
+      }
+      next = bl.next;
+    }
+    for (k in this.blocks) {
+      if (!seen[k]) {
+        throw new Error(k + " not in next chain");
+      }
+    }
+    seen = {};
+    while (prev) {
+      if (seen[prev]) {
+        throw new Error("cycle in prev links");
+      }
+      seen[prev] = true;
+      oldBl = bl;
+      bl = this.blocks[prev];
+      if (!bl) {
+        throw new Error("Prev of " + oldBl.id + " doesn't exist");
+      }
+      prev = bl.prev;
+    }
+    for (k in this.blocks) {
+      if (!seen[k]) {
+        throw new Error(k + " not in prev chain");
+      }
+    }
+    return null;
+  };
+
   DataStore.prototype.blockList = function() {
     var bl, next, results;
     next = this.first;
@@ -880,6 +941,7 @@ DataStore = (function(superClass) {
       }
       this.blocks[id] = block;
     }
+    this.check();
     return {
       adds: newBlocks,
       updates: old,

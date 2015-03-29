@@ -347,17 +347,17 @@ on it can select if start and end are different
           oldText = newText
           newBlocks = @options.parseBlocks newText
           {prev:prevId, text:firstText} = oldBlocks[0]
-          if prevId && firstText != newBlocks[0].text
+          if prevId && firstText != (if newBlocks.length then newBlocks[0].text else '')
             oldBlocks.unshift prev = @options.getBlock prevId
             newText = prev.text + newText
           {next:nextId, text:lastText} = last oldBlocks
-          if nextId && lastText != last(newBlocks).text
+          if nextId && lastText != (if newBlocks.length then last(newBlocks).text else '')
             oldBlocks.push next = @options.getBlock nextId
             newText += next.text
-        while oldBlocks[0].text == newBlocks[0].text
+        while oldBlocks.length && newBlocks.length && oldBlocks[0].text == newBlocks[0].text
           oldBlocks.shift()
           newBlocks.shift()
-        while last(oldBlocks).text == last(newBlocks).text
+        while oldBlocks.length && newBlocks.length && last(oldBlocks).text == last(newBlocks).text
           oldBlocks.pop()
           newBlocks.pop()
         oldBlocks: oldBlocks, newBlocks: newBlocks, newText: newText
@@ -571,38 +571,46 @@ Main code
       newId: -> "block#{idCounter++}"
 
       copyBlock: (block)->
-        bl = {}
-        for k,v of block
-          bl[k] = v
-        bl
+        if !block then null
+        else
+          bl = {}
+          for k,v of block
+            bl[k] = v
+          bl
 
 `replaceBlocks(oldBlocks, newBlocks) -> removedBlocks`: override this if you need to link up the blocks, etc., like so that `renderBlock()` can return the proper next id, for instance.
 
       replaceBlocks: (oldBlocks, newBlocks)->
         newBlockMap = {}
-        changes = removes: removes = {}, sets: newBlockMap
-        spliceNext = if oldBlocks.length then last(oldBlocks).next else @getFirst()
+        removes = {}
+        changes = {removes, sets: newBlockMap, first: @getFirst(), oldBlocks, newBlocks}
         for oldBlock in oldBlocks[newBlocks.length...oldBlocks.length]
-          removes[oldBlock._id] = true
+          removes[oldBlock._id] = oldBlock
+        prev = null
         for newBlock, i in newBlocks
-          if i < oldBlocks.length
-            oldBlock = oldBlocks[i]
+          if oldBlock = oldBlocks[i]
             newBlock._id = oldBlock._id
             newBlock.prev = oldBlock.prev
             newBlock.next = oldBlock.next
           else
             newBlock._id = @newId()
-            if i > 0 then link newBlocks[i - 1], newBlock
-          newBlockMap[newBlock._id] = newBlock
-        changes.first = if !oldBlocks.length then newBlocks[0]._id else @getFirst()
-        if (oldBlocks.length != newBlocks.length) && spliceNext
-          next = @copyBlock @getBlock spliceNext
-          newBlockMap[next._id] = next
-          link last(newBlocks), next
+            if prev then link prev, newBlock
+          prev = newBlockMap[newBlock._id] = newBlock
+        if oldBlocks.length != newBlocks.length
+          if !prev && prev = @copyBlock @getBlock oldBlocks[0].prev
+            newBlockMap[prev._id] = prev
+          lastBlock = last oldBlocks
+          if next = @copyBlock @getBlock (if lastBlock then lastBlock.next else @getFirst())
+            newBlockMap[next._id] = next
+            if !(next.prev = prev?._id) then changes.first = next._id
+          if prev
+            if !@getFirst() || removes[@getFirst()] then changes.first = newBlocks[0]._id
+            prev.next = next?._id
         @change changes
         changes
+
       change: ({first, removes, sets})->
-        if first then @first = first
+        @first = first
         for id in removes
           delete @blocks[id]
         for id, block of sets
@@ -673,6 +681,31 @@ Events:
         super()
         @blocks = {}
       getBlock: (id)-> @blocks[id]
+      check: ->
+        seen = {}
+        next = @first
+        prev = null
+        while next
+          prev = next
+          if seen[next] then throw new Error "cycle in next links"
+          seen[next] = true
+          oldBl = bl
+          bl = @blocks[next]
+          if !bl then throw new Error "Next of #{oldBl.id} doesn't exist"
+          next = bl.next
+        for k of @blocks
+          if !seen[k] then throw new Error "#{k} not in next chain"
+        seen = {}
+        while prev
+          if seen[prev] then throw new Error "cycle in prev links"
+          seen[prev] = true
+          oldBl = bl
+          bl = @blocks[prev]
+          if !bl then throw new Error "Prev of #{oldBl.id} doesn't exist"
+          prev = bl.prev
+        for k of @blocks
+          if !seen[k] then throw new Error "#{k} not in prev chain"
+        null
       blockList: ->
         next = @first
         while next
@@ -694,6 +727,7 @@ Events:
           if @blocks[id] then old[id] = block
           else newBlocks[id] = block
           @blocks[id] = block
+        @check()
         adds: newBlocks, updates: old, removes: removed, oldFirst: first
       triggerChange: (changes)-> @trigger 'change', changes
 

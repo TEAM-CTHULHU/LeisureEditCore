@@ -19,6 +19,9 @@
     data = null
 
     class OrgData extends DataStore
+      parseBlocks: (text)->
+        if text == '' then []
+        else orgDoc parseOrgMode text.replace /\r\n/g, '\n'
       makeChange: (changes)->
         result = super changes
         @findParents()
@@ -60,7 +63,7 @@
     class PlainEditing extends DataStoreEditingOptions
       nodeForId: (id)-> $("#plain-#{id}")
       idForNode: (node)-> node.id.match(/^plain-(.*)$/)?[1]
-      parseBlocks: (text)-> orgDoc parseOrgMode text.replace /\r\n/g, '\n'
+      parseBlocks: (text)-> @data.parseBlocks text
       renderBlock: (block)-> ["<span id='plain-#{block._id}' data-block>#{escapeHtml block.text}</span>", block.next]
       setEditor: (@editor)->
         @editor.on 'moved', =>
@@ -76,7 +79,7 @@
     class OrgEditing extends DataStoreEditingOptions
       nodeForId: (id)-> $("#fancy-#{id}")
       idForNode: (node)-> node.id.match(/^fancy-(.*)$/)?[1]
-      parseBlocks: (text)-> orgDoc parseOrgMode text.replace /\r\n/g, '\n'
+      parseBlocks: (text)-> @data.parseBlocks text
       renderBlock: (block)->
         html = if block.type == 'headline'
           "<div #{blockAttrs block} contenteditable='false'>#{blockLabel block}<div contenteditable='true'>#{contentSpan block.text, 'text'}#{(@renderBlock(@getBlock childId)[0] for childId in @data.children[block._id] ? []).join ''}</div></div>"
