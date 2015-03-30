@@ -751,7 +751,7 @@ BasicEditingOptions = (function(superClass) {
         }
       }
       if (prev) {
-        if (!this.getFirst() || removes[this.getFirst()]) {
+        if (!oldBlocks.length || !this.getFirst() || removes[this.getFirst()]) {
           changes.first = newBlocks[0]._id;
         }
         prev.next = next != null ? next._id : void 0;

@@ -604,7 +604,8 @@ Main code
             newBlockMap[next._id] = next
             if !(next.prev = prev?._id) then changes.first = next._id
           if prev
-            if !@getFirst() || removes[@getFirst()] then changes.first = newBlocks[0]._id
+            if !oldBlocks.length || !@getFirst() || removes[@getFirst()]
+              changes.first = newBlocks[0]._id
             prev.next = next?._id
         @change changes
         changes
