@@ -709,7 +709,7 @@ BasicEditingOptions = (function(superClass) {
   };
 
   BasicEditingOptions.prototype.replaceBlocks = function(oldBlocks, newBlocks) {
-    var changes, i, j, l, lastBlock, len, len1, newBlock, newBlockMap, next, oldBlock, prev, ref, removes;
+    var changes, newBlockMap, prev, removes;
     newBlockMap = {};
     removes = {};
     changes = {
@@ -719,6 +719,14 @@ BasicEditingOptions = (function(superClass) {
       oldBlocks: oldBlocks,
       newBlocks: newBlocks
     };
+    prev = this.computeRemovesAndNewBlockIds(oldBlocks, newBlocks, newBlockMap, removes);
+    this.patchNewBlocks(oldBlocks, newBlocks, changes, newBlockMap, removes, prev);
+    this.removeDuplicateChanges(newBlockMap);
+    return this.change(changes);
+  };
+
+  BasicEditingOptions.prototype.computeRemovesAndNewBlockIds = function(oldBlocks, newBlocks, newBlockMap, removes) {
+    var i, j, l, len, len1, newBlock, oldBlock, prev, ref;
     ref = oldBlocks.slice(newBlocks.length, oldBlocks.length);
     for (j = 0, len = ref.length; j < len; j++) {
       oldBlock = ref[j];
@@ -739,6 +747,11 @@ BasicEditingOptions = (function(superClass) {
       }
       prev = newBlockMap[newBlock._id] = newBlock;
     }
+    return prev;
+  };
+
+  BasicEditingOptions.prototype.patchNewBlocks = function(oldBlocks, newBlocks, changes, newBlockMap, removes, prev) {
+    var lastBlock, next;
     if (oldBlocks.length !== newBlocks.length) {
       if (!prev && (prev = this.copyBlock(this.getBlock(oldBlocks[0].prev)))) {
         newBlockMap[prev._id] = prev;
@@ -754,11 +767,25 @@ BasicEditingOptions = (function(superClass) {
         if (!oldBlocks.length || !this.getFirst() || removes[this.getFirst()]) {
           changes.first = newBlocks[0]._id;
         }
-        prev.next = next != null ? next._id : void 0;
+        return prev.next = next != null ? next._id : void 0;
       }
     }
-    this.change(changes);
-    return changes;
+  };
+
+  BasicEditingOptions.prototype.removeDuplicateChanges = function(newBlockMap) {
+    var block, dups, id, oldBlock, results;
+    dups = [];
+    for (id in newBlockMap) {
+      block = newBlockMap[id];
+      if ((oldBlock = this.getBlock(id)) && block.text === oldBlock.text && block.next === oldBlock.next && block.prev === oldBlock.prev) {
+        dups.push(id);
+      }
+    }
+    results = [];
+    for (id in dups) {
+      results.push(delete newBlockMap[id]);
+    }
+    return results;
   };
 
   BasicEditingOptions.prototype.change = function(arg) {

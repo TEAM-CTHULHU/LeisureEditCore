@@ -584,6 +584,12 @@ Main code
         newBlockMap = {}
         removes = {}
         changes = {removes, sets: newBlockMap, first: @getFirst(), oldBlocks, newBlocks}
+        prev = @computeRemovesAndNewBlockIds oldBlocks, newBlocks, newBlockMap, removes
+        @patchNewBlocks oldBlocks, newBlocks, changes, newBlockMap, removes, prev
+        @removeDuplicateChanges newBlockMap
+        @change changes
+
+      computeRemovesAndNewBlockIds: (oldBlocks, newBlocks, newBlockMap, removes)->
         for oldBlock in oldBlocks[newBlocks.length...oldBlocks.length]
           removes[oldBlock._id] = oldBlock
         prev = null
@@ -596,6 +602,9 @@ Main code
             newBlock._id = @newId()
             if prev then link prev, newBlock
           prev = newBlockMap[newBlock._id] = newBlock
+        prev
+
+      patchNewBlocks: (oldBlocks, newBlocks, changes, newBlockMap, removes, prev)->
         if oldBlocks.length != newBlocks.length
           if !prev && prev = @copyBlock @getBlock oldBlocks[0].prev
             newBlockMap[prev._id] = prev
@@ -607,8 +616,14 @@ Main code
             if !oldBlocks.length || !@getFirst() || removes[@getFirst()]
               changes.first = newBlocks[0]._id
             prev.next = next?._id
-        @change changes
-        changes
+
+      removeDuplicateChanges: (newBlockMap)->
+        dups = []
+        for id, block of newBlockMap
+          if (oldBlock = @getBlock id) && block.text == oldBlock.text && block.next == oldBlock.next && block.prev == oldBlock.prev
+            dups.push id
+        for id of dups
+          delete newBlockMap[id]
 
       change: ({first, removes, sets})->
         @first = first
