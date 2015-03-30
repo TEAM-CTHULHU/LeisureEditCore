@@ -86,7 +86,7 @@
         else if block.type == 'code'
           "<span #{blockAttrs block}>#{blockLabel block}#{escapeHtml block.text}</span>"
         else "<span #{blockAttrs block}>#{blockLabel block}#{escapeHtml block.text}</span>"
-        [html, block.nextSibling]
+        [html, block.nextSibling || block.next]
       setEditor: (@editor)->
         @editor.on 'moved', =>
           {blockId, offset} = @editor.getBlockLocation()

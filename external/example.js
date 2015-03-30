@@ -178,7 +178,7 @@ OrgEditing = (function(superClass) {
       }
       return results;
     }).call(this)).join('')) + "</div></div>" : block.type === 'code' ? "<span " + (blockAttrs(block)) + ">" + (blockLabel(block)) + (escapeHtml(block.text)) + "</span>" : "<span " + (blockAttrs(block)) + ">" + (blockLabel(block)) + (escapeHtml(block.text)) + "</span>";
-    return [html, block.nextSibling];
+    return [html, block.nextSibling || block.next];
   };
 
   OrgEditing.prototype.setEditor = function(editor1) {
