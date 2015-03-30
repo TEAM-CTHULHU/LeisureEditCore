@@ -21,9 +21,11 @@ Basic Idea
 ==========
 LeisureEditCore edits a doubly-linked list of "blocks" that can render as DOM nodes.
 
-The rendered DOM tree contains the full text of the backing structure, along with
-ids from it.  Some of the text may not be visible and there may be a lot of items
-in the rendered DOM that are not in the backing structure.
+The rendered DOM tree contains the full text of the block list in the
+proper order, along with ids from the blocks.  Some of the text may
+not be visible and there may be a lot of items in the rendered DOM
+that are not in the backing structure.  Also, the rendered DOM may
+have a nested tree-structure.
 
 When the user makes a change, the editor:
 

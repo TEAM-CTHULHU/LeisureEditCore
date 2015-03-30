@@ -1,10 +1,17 @@
+* To be done
+** better fancy markup in the example
+- use handlebars
+- hide headline stars
+- make code blocks fancier
+- hide code boilerplate
 * Bugs
-** BUG demoting the first headline to a chunk loses the rest of the doc
 ** BUG selections aren't really handled
 ** BUG copy/paste lines doesn't work
 ** BUG spell check doesn't work right
 ** BUG undo/redo don't work right
 ** BUG home puts cursor before gray boxes
 ** BUG capslock doesn't work
+** DONE demoting the first headline to a chunk loses the rest of the doc
+   CLOSED: [2015-03-30 Mon 14:51]
 * Defs
 #+TODO: TODO BUG | DONE
