@@ -346,14 +346,17 @@ on it can select if start and end are different
         oldText = blockText blocks
         newText = oldText.substring(0, start) + newContent + oldText.substring end
         {oldBlocks, newBlocks, offset} = @changeStructure blocks, newText
-        @options.edit oldBlocks, newBlocks
+        if oldBlocks.length || newBlocks.length
+          @options.edit oldBlocks, newBlocks
         if newBlocks.length
           startPos = @domCursor @options.nodeForId newBlocks[0]._id, 0
         else
-          next = @options.getBlock @options.getBlock(oldBlocks[0].prev).next
-          if !next then return
-          startPos = @domCursor @options.nodeForId newBlocks[0]._id, 0
           offset = 0
+          if oldBlocks.length
+            next = @options.getBlock @options.getBlock(oldBlocks[0].prev).next
+            if !next then return
+            startPos = @domCursor @options.nodeForId newBlocks[0]._id, 0
+          else startPos = @domCursor @options.nodeForId blocks[0]._id, 0
         if select
           r = document.createRange()
           startPos = startPos.forwardChars start + offset, true
@@ -393,19 +396,31 @@ on it can select if start and end are different
       bind: ->
         @node.on 'dragenter', (e)=>
           e.preventDefault()
-          #setTimeout (->alert 'DROP not supported yet'), 1
+          #e.stopPropagation()
+          e.originalEvent.dropEffect = 'none'
           false
         @node.on 'dragover', (e)=>
           e.preventDefault()
+          #e.stopPropagation()
+          e.originalEvent.dropEffect = 'none'
           false
         @node.on 'dragleave', (e)=>
           e.preventDefault()
           false
         @node.on 'drop', (e)=>
           e.preventDefault()
+          #e.stopPropagation()
+          e.originalEvent.dropEffect = 'none'
           setTimeout (->alert 'DROP not supported yet'), 1
           false
+        @node.on 'dragstart', (e)=>
+          sel = getSelection()
+          if sel.type == 'Range'
+            clipboard = e.originalEvent.dataTransfer
+            clipboard.setData 'text/html', (htmlForNode node for node in sel.getRangeAt(0).cloneContents().childNodes).join ''
+            clipboard.setData 'text/plain', @domCursor(sel.anchorNode, sel.anchorOffset).getTextTo @domCursor(sel.focusNode, sel.focusOffset)
         @node.on 'cut', (e)=>
+          e.preventDefault()
           sel = getSelection()
           if sel.type == 'Range'
             clipboard = e.originalEvent.clipboardData
@@ -420,7 +435,7 @@ on it can select if start and end are different
             clipboard.setData 'text/html', (htmlForNode node for node in sel.getRangeAt(0).cloneContents().childNodes).join ''
             clipboard.setData 'text/plain', @domCursor(sel.anchorNode, sel.anchorOffset).getTextTo @domCursor(sel.focusNode, sel.focusOffset)
         @node.on 'paste', (e)=>
-          @handleInsert e, getSelection(), e.originalEvent.clipboardData.getData('text/plain'), true
+          @handleInsert e, getSelection(), e.originalEvent.clipboardData.getData('text/plain'), false
         @node.on 'mousedown', (e)=>
           @trigger 'moved', this
           @setCurKeyBinding null
@@ -875,11 +890,12 @@ adapted from Vega on [StackOverflow](http://stackoverflow.com/a/13127566/1026782
     modifiers = (e, c)->
       res = specialKeys[c] || String.fromCharCode(c)
       if e.altKey then res = "M-" + res
+      if e.metaKey then res = "M-" + res
       if e.ctrlKey then res = "C-" + res
       if e.shiftKey then res = "S-" + res
       res
 
-    modifyingKey = (c, e)-> !e.altKey && !e.ctrlKey && (
+    modifyingKey = (c, e)-> !e.altKey && !e.metaKey && !e.ctrlKey && (
       (47 < c < 58)          || # number keys
       c == 32 || c == ENTER  || # spacebar and enter
       c == BS || c == DEL    || # backspace and delete

@@ -338,16 +338,22 @@ LeisureEditCore = (function(superClass) {
     oldText = blockText(blocks);
     newText = oldText.substring(0, start) + newContent + oldText.substring(end);
     ref = this.changeStructure(blocks, newText), oldBlocks = ref.oldBlocks, newBlocks = ref.newBlocks, offset = ref.offset;
-    this.options.edit(oldBlocks, newBlocks);
+    if (oldBlocks.length || newBlocks.length) {
+      this.options.edit(oldBlocks, newBlocks);
+    }
     if (newBlocks.length) {
       startPos = this.domCursor(this.options.nodeForId(newBlocks[0]._id, 0));
     } else {
-      next = this.options.getBlock(this.options.getBlock(oldBlocks[0].prev).next);
-      if (!next) {
-        return;
-      }
-      startPos = this.domCursor(this.options.nodeForId(newBlocks[0]._id, 0));
       offset = 0;
+      if (oldBlocks.length) {
+        next = this.options.getBlock(this.options.getBlock(oldBlocks[0].prev).next);
+        if (!next) {
+          return;
+        }
+        startPos = this.domCursor(this.options.nodeForId(newBlocks[0]._id, 0));
+      } else {
+        startPos = this.domCursor(this.options.nodeForId(blocks[0]._id, 0));
+      }
     }
     if (select) {
       r = document.createRange();
@@ -402,12 +408,14 @@ LeisureEditCore = (function(superClass) {
     this.node.on('dragenter', (function(_this) {
       return function(e) {
         e.preventDefault();
+        e.originalEvent.dropEffect = 'none';
         return false;
       };
     })(this));
     this.node.on('dragover', (function(_this) {
       return function(e) {
         e.preventDefault();
+        e.originalEvent.dropEffect = 'none';
         return false;
       };
     })(this));
@@ -420,15 +428,37 @@ LeisureEditCore = (function(superClass) {
     this.node.on('drop', (function(_this) {
       return function(e) {
         e.preventDefault();
+        e.originalEvent.dropEffect = 'none';
         setTimeout((function() {
           return alert('DROP not supported yet');
         }), 1);
         return false;
       };
     })(this));
+    this.node.on('dragstart', (function(_this) {
+      return function(e) {
+        var clipboard, node, sel;
+        sel = getSelection();
+        if (sel.type === 'Range') {
+          clipboard = e.originalEvent.dataTransfer;
+          clipboard.setData('text/html', ((function() {
+            var j, len, ref, results;
+            ref = sel.getRangeAt(0).cloneContents().childNodes;
+            results = [];
+            for (j = 0, len = ref.length; j < len; j++) {
+              node = ref[j];
+              results.push(htmlForNode(node));
+            }
+            return results;
+          })()).join(''));
+          return clipboard.setData('text/plain', _this.domCursor(sel.anchorNode, sel.anchorOffset).getTextTo(_this.domCursor(sel.focusNode, sel.focusOffset)));
+        }
+      };
+    })(this));
     this.node.on('cut', (function(_this) {
       return function(e) {
         var clipboard, node, sel;
+        e.preventDefault();
         sel = getSelection();
         if (sel.type === 'Range') {
           clipboard = e.originalEvent.clipboardData;
@@ -470,7 +500,7 @@ LeisureEditCore = (function(superClass) {
     })(this));
     this.node.on('paste', (function(_this) {
       return function(e) {
-        return _this.handleInsert(e, getSelection(), e.originalEvent.clipboardData.getData('text/plain'), true);
+        return _this.handleInsert(e, getSelection(), e.originalEvent.clipboardData.getData('text/plain'), false);
       };
     })(this));
     this.node.on('mousedown', (function(_this) {
@@ -1188,6 +1218,9 @@ modifiers = function(e, c) {
   if (e.altKey) {
     res = "M-" + res;
   }
+  if (e.metaKey) {
+    res = "M-" + res;
+  }
   if (e.ctrlKey) {
     res = "C-" + res;
   }
@@ -1198,7 +1231,7 @@ modifiers = function(e, c) {
 };
 
 modifyingKey = function(c, e) {
-  return !e.altKey && !e.ctrlKey && (((47 < c && c < 58)) || c === 32 || c === ENTER || c === BS || c === DEL || ((64 < c && c < 91)) || ((95 < c && c < 112)) || ((185 < c && c < 193)) || ((218 < c && c < 223)));
+  return !e.altKey && !e.metaKey && !e.ctrlKey && (((47 < c && c < 58)) || c === 32 || c === ENTER || c === BS || c === DEL || ((64 < c && c < 91)) || ((95 < c && c < 112)) || ((185 < c && c < 193)) || ((218 < c && c < 223)));
 };
 
 last = function(array) {
