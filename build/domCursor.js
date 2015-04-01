@@ -230,7 +230,8 @@ DOMCursor = (function() {
   };
 
   DOMCursor.prototype.countChars = function(node, pos) {
-    var n, tot;
+    var n, start, tot;
+    start = this.copy();
     if (node instanceof DOMCursor) {
       pos = node.pos;
       node = node.node;
@@ -246,7 +247,11 @@ DOMCursor = (function() {
     if (n.isEmpty() || n.node !== node) {
       return -1;
     } else if (n.type === 'text') {
-      return tot + pos;
+      tot += pos;
+      if (start.node === n.node) {
+        tot -= start.pos;
+      }
+      return tot;
     } else {
       return tot;
     }
@@ -255,6 +260,7 @@ DOMCursor = (function() {
   DOMCursor.prototype.forwardChars = function(count, contain) {
     var n;
     n = this;
+    count += this.pos;
     while (!n.isEmpty() && 0 <= count) {
       if (n.type === 'text') {
         if (count < n.node.length) {

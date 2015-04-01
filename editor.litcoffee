@@ -278,23 +278,40 @@ Events:
             .countChars targ.node, targ.pos
         else -1
       loadURL: (url)-> $.get url, (text)=> @options.load text
-      handleInsert: (e, s, text)->
+      handleInsert: (e, s, text, select)->
         e.preventDefault()
-        if s.type == 'Caret'
-          holder = @options.getContainer(s.anchorNode)
-          block = @getCopy @options.idForNode holder
-          blocks = [block]
-          pos = @getTextPosition holder, s.anchorNode, s.anchorOffset
-          @editBlocks [block], pos, pos, (text ? getEventChar e), pos + 1
-        else setTimeout (->alert 'Selection not supported yet'), 1
+        startHolder = @options.getContainer(s.anchorNode)
+        startBlock = @options.getBlock @options.idForNode startHolder
+        blocks = [startBlock]
+        endPos = startPos = @getTextPosition startHolder, s.anchorNode, s.anchorOffset
+        if s.type == 'Range'
+          endHolder = @options.getContainer(s.anchorNode)
+          endId = @options.idForNode endHolder
+          cur = startBlock
+          while cur._id != endId
+            blocks.push cur = @options.getBlock cur.next
+          start = @domCursor s.anchorNode, s.anchorOffset
+          end = @domCursor s.focusNode, s.focusOffset
+          endPos = startPos + start.countChars end
+        @editBlocks blocks, startPos, endPos, (text ? getEventChar e), select
       backspace: (event, sel, r)->
+        if sel.type == 'Range' then return @cutText event
         holderId = @options.idForNode @options.getContainer(sel.anchorNode)
         @currentBlockIds = [(@getCopy holderId)._id]
         @handleDelete event, sel, false, (text, pos)-> true
       del: (event, sel, r)->
+        if sel.type == 'Range' then return @cutText event
         holderId = @options.idForNode @options.getContainer(sel.anchorNode)
         @currentBlockIds = [(@getCopy holderId)._id]
         @handleDelete event, sel, true, (text, pos)-> true
+      cutText: (e)->
+        e.preventDefault()
+        sel = getSelection()
+        if sel.type == 'Range'
+          html = (htmlForNode node for node in sel.getRangeAt(0).cloneContents().childNodes).join ''
+          text = @domCursor(sel.anchorNode, sel.anchorOffset).getTextTo @domCursor(sel.focusNode, sel.focusOffset)
+          @options.simulateCut html: html, text: text
+          @handleInsert e, sel, ''
       handleDelete: (e, s, forward, delFunc)->
         e.preventDefault()
         if s.type == 'Caret'
@@ -324,45 +341,55 @@ Events:
 editBlocks: at this point, just place the cursor after the newContent, later
 on it can select if start and end are different
 
-      editBlocks: (blocks, start, end, newContent)->
+      editBlocks: (blocks, start, end, newContent, select)->
         caret = start + newContent.length
-        oldText = (block.text for block in blocks).join ''
+        oldText = blockText blocks
         newText = oldText.substring(0, start) + newContent + oldText.substring end
-        {oldBlocks, newBlocks, newText} = @changeStructure blocks, newText
-        if oldBlocks.length
-          for oldBlock in oldBlocks
-            if oldBlock._id == blocks[0]._id then break
-            if oldBlock._id != blocks[0]._id
-              caret += oldBlock.text.length
-          if prevBlock = @options.getBlock oldBlocks[0].prev
-            caret += prevBlock.text.length
+        {oldBlocks, newBlocks, offset} = @changeStructure blocks, newText
         @options.edit oldBlocks, newBlocks
-        holder = if prevBlock then @options.nodeForId prevBlock._id else @node[0]
-        @domCursorForTextPosition(holder, caret).moveCaret()
+        if newBlocks.length
+          startPos = @domCursor @options.nodeForId newBlocks[0]._id, 0
+        else
+          next = @options.getBlock @options.getBlock(oldBlocks[0].prev).next
+          if !next then return
+          startPos = @domCursor @options.nodeForId newBlocks[0]._id, 0
+          offset = 0
+        if select
+          r = document.createRange()
+          startPos = startPos.forwardChars start + offset, true
+          r.setStart startPos.node, startPos.pos
+          endPos = startPos.forwardChars newContent.length, true
+          r.setEnd endPos.node, endPos.pos
+          selectRange r
+        else
+          startPos.forwardChars(start + offset + newContent.length, true).moveCaret()
 
 `changeStructure(oldBlocks, newText)`: Compute blocks affected by transforming oldBlocks into newText
 
       changeStructure: (oldBlocks, newText)->
         oldBlocks = oldBlocks.slice()
         oldText = null
-        while oldText != newText
+        offset = 0
+        while oldText != newText && (oldBlocks[0].prev || last(oldBlocks).next)
           oldText = newText
-          newBlocks = @options.parseBlocks newText
-          {prev:prevId, text:firstText} = oldBlocks[0]
-          if prevId && firstText != (if newBlocks.length then newBlocks[0].text else '')
-            oldBlocks.unshift prev = @options.getBlock prevId
+          if prev = @options.getBlock oldBlocks[0].prev
+            oldBlocks.unshift prev
             newText = prev.text + newText
-          {next:nextId, text:lastText} = last oldBlocks
-          if nextId && lastText != (if newBlocks.length then last(newBlocks).text else '')
-            oldBlocks.push next = @options.getBlock nextId
+            offset += prev.text.length
+          if next = @options.getBlock last(oldBlocks).next
+            oldBlocks.push next
             newText += next.text
+          newBlocks = @options.parseBlocks newText
+          if (!prev || prev.text == newBlocks[0].text) && (!next || next.text == last(newBlocks).text)
+            break
         while oldBlocks.length && newBlocks.length && oldBlocks[0].text == newBlocks[0].text
+          offset -= oldBlocks[0].text.length
           oldBlocks.shift()
           newBlocks.shift()
         while oldBlocks.length && newBlocks.length && last(oldBlocks).text == last(newBlocks).text
           oldBlocks.pop()
           newBlocks.pop()
-        oldBlocks: oldBlocks, newBlocks: newBlocks, newText: newText
+        oldBlocks: oldBlocks, newBlocks: newBlocks, offset: offset
       bind: ->
         @node.on 'dragenter', (e)=>
           e.preventDefault()
@@ -379,14 +406,21 @@ on it can select if start and end are different
           setTimeout (->alert 'DROP not supported yet'), 1
           false
         @node.on 'cut', (e)=>
-          e.preventDefault()
-          alert 'CUT not supported yet'
+          sel = getSelection()
+          if sel.type == 'Range'
+            clipboard = e.originalEvent.clipboardData
+            clipboard.setData 'text/html', (htmlForNode node for node in sel.getRangeAt(0).cloneContents().childNodes).join ''
+            clipboard.setData 'text/plain', @domCursor(sel.anchorNode, sel.anchorOffset).getTextTo @domCursor(sel.focusNode, sel.focusOffset)
+            @handleInsert e, sel, ''
         @node.on 'copy', (e)=>
           e.preventDefault()
-          alert 'COPY not supported yet'
+          sel = getSelection()
+          if sel.type == 'Range'
+            clipboard = e.originalEvent.clipboardData
+            clipboard.setData 'text/html', (htmlForNode node for node in sel.getRangeAt(0).cloneContents().childNodes).join ''
+            clipboard.setData 'text/plain', @domCursor(sel.anchorNode, sel.anchorOffset).getTextTo @domCursor(sel.focusNode, sel.focusOffset)
         @node.on 'paste', (e)=>
-          e.preventDefault()
-          alert 'PASTE not supported yet'
+          @handleInsert e, getSelection(), e.originalEvent.clipboardData.getData('text/plain'), true
         @node.on 'mousedown', (e)=>
           @trigger 'moved', this
           @setCurKeyBinding null
@@ -405,10 +439,10 @@ on it can select if start and end are different
           if bound then @modCancelled = !checkMod
           else
             @modCancelled = false
-            if c == ENTER then @handleInsert e, s, '\n'
+            if c == ENTER then @handleInsert e, s, '\n', false
             else if c == BS then @backspace e, s, r
             else if c == DEL then @del e, s, r
-            else if modifyingKey c, e then @handleInsert e, s
+            else if modifyingKey c, e then @handleInsert e, s, null, false
       blockIdsForSelection: (sel, r)->
         if !sel then sel = getSelection()
         if sel.rangeCount == 1
@@ -548,6 +582,10 @@ Hook methods (required)
 `edit(oldBlocks, newBlocks)`: The editor calls this after the user has attempted an edit.  It should make the requested change (probably by calling `replaceBlocks`, below) and rerender the appropriate DOM.
 
       edit: (oldBlocks, newBlocks)-> throw new Error "options.edit(func) is not implemented"
+
+`simulateCut({html, text})`: The editor calls this when the user hits backspace or delete on selected text.
+
+      simulateCut: ({html, text})->
 
 Main code
 ---------
@@ -816,6 +854,10 @@ adapted from Vega on [StackOverflow](http://stackoverflow.com/a/13127566/1026782
       "44": "<"
       "46": ">"
       "47": "?"
+
+    htmlForNode = (n)->
+      if n.nodeType == n.TEXT_NODE then escapeHtml n.data
+      else n.outerHTML
 
     getEventChar = (e)->
       c = (e.charCode || e.keyCode || e.which)

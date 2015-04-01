@@ -4,14 +4,19 @@
 - hide headline stars
 - make code blocks fancier
 - hide code boilerplate
+** better updating in the exmaple
+- only render necessary blocks
 * Bugs
-** BUG selections aren't really handled
-** BUG copy/paste lines doesn't work
-** BUG spell check doesn't work right
-** BUG undo/redo don't work right
 ** BUG home puts cursor before gray boxes
+** BUG spell check doesn't work right
+** BUG undo/redo not implemented
+** BUG drag/drop not implemented
 ** BUG capslock doesn't work
+** DONE selections aren't really handled
+   CLOSED: [2015-04-01 Wed 14:26]
 ** DONE demoting the first headline to a chunk loses the rest of the doc
    CLOSED: [2015-03-30 Mon 14:51]
+** DONE copy/paste lines doesn't work
+   CLOSED: [2015-04-01 Wed 14:26]
 * Defs
 #+TODO: TODO BUG | DONE

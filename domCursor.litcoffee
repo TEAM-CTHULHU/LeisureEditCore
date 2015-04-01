@@ -233,6 +233,7 @@ indicates to find the first text node behind the cursor).
 Include (node, 0) up to but not including (node, pos)
 
       countChars: (node, pos)->
+        start = @copy()
         if node instanceof DOMCursor
           pos = node.pos
           node = node.node
@@ -242,7 +243,10 @@ Include (node, 0) up to but not including (node, pos)
           if n.type == 'text' then tot += n.node.length
           n = n.next()
         if n.isEmpty() || n.node != node then -1
-        else if n.type == 'text' then tot + pos
+        else if n.type == 'text'
+          tot += pos
+          if start.node == n.node then tot -= start.pos
+          tot
         else tot
 
 **forwardChars** moves the cursor forward by count characters
@@ -252,6 +256,7 @@ the previous text node (node, node.length)
 
       forwardChars: (count, contain)->
         n = this
+        count += @pos
         while !n.isEmpty() && 0 <= count
           if n.type == 'text'
             if count < n.node.length
