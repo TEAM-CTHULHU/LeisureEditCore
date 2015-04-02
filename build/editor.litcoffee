@@ -197,6 +197,7 @@ Here is the code for [LeisureEditCore](https://github.com/zot/LeisureEditCore).
       #'C-P': keyFuncs.previousLine
       #'C-N': keyFuncs.nextLine
       #'C-X C-F': keyFuncs.save
+    dragRange = null
 
 `idCounter`: id number for next created block
 
@@ -419,29 +420,29 @@ on it can select if start and end are different
           offset = dropContainer.countChars dropPos
           insertText = oe.dataTransfer.getData('text/plain')
           insert = => @replace e, {type: 'Caret', offset, block: @options.getBlock(blockId), length: 0}, insertText, false
-          if @dragRange
-            start = @domCursor(@options.nodeForId(@dragRange.block._id), 0).forwardChars @dragRange.offset
-            r2 = start.range start.forwardChars @dragRange.length
+          if dragRange
+            start = @domCursor(@options.nodeForId(dragRange.block._id), 0).forwardChars dragRange.offset
+            r2 = start.range start.forwardChars dragRange.length
             insertOffset = @options.getPositionForBlock(@options.getBlock blockId) + offset
-            cutOffset = @options.getPositionForBlock(@dragRange.block) + @dragRange.offset
-            if cutOffset <= insertOffset <= cutOffset + @dragRange.length
+            cutOffset = @options.getPositionForBlock(dragRange.block) + dragRange.offset
+            if cutOffset <= insertOffset <= cutOffset + dragRange.length
               oe.preventDefault()
               oe.dataTransfer.dropEffect = 'none'
               return
-            dr = @dragRange
+            dr = dragRange
             if insertOffset <= cutOffset
-              @replace e, @dragRange, '', false
+              @replace e, dragRange, '', false
               @replace e, @blockRangeForOffsets(insertOffset, 0), insertText, false
             else
               insert()
-              @replace e, @blockRangeForOffsets(cutOffset, @dragRange.length), '', false
-            @dragRange = null
+              @replace e, @blockRangeForOffsets(cutOffset, dragRange.length), '', false
+            dragRange = null
           else insert()
           true
         @node.on 'dragstart', (e)=>
           sel = getSelection()
           if sel.type == 'Range'
-            @dragRange = @getSelectedBlockRange()
+            dragRange = @getSelectedBlockRange()
             clipboard = e.originalEvent.dataTransfer
             clipboard.setData 'text/html', (htmlForNode node for node in sel.getRangeAt(0).cloneContents().childNodes).join ''
             clipboard.setData 'text/plain', @selectedText sel
@@ -489,12 +490,13 @@ on it can select if start and end are different
             else if c == DEL then @del e, s, r
             else if modifyingKey c, e then @replace e, @getSelectedBlockRange(), null, false
       dragEnd: (e)->
-        if @dragRange
+        console.log "drag end"
+        if dragRange
           if e.dataTransfer.dropEffect == 'move'
             sel = @getSelectedBlockRange()
-            @replace e, @dragRange, ''
+            @replace e, dragRange, ''
             @selectBlockRange sel
-          @dragRange = null
+          dragRange = null
       blockIdsForSelection: (sel, r)->
         if !sel then sel = getSelection()
         if sel.rangeCount == 1
@@ -976,10 +978,6 @@ adapted from Vega on [StackOverflow](http://stackoverflow.com/a/13127566/1026782
       )
 
     last = (array)-> array.length && array[array.length - 1]
-
-    rangeContainsRange = (r1, r2)->
-      r1.compareBoundaryPoints(Range.START_TO_START, r2) <= 0 &&
-        r2.compareBoundaryPoints(Range.END_TO_END, r1) <= 0
 
 Exports
 =======
