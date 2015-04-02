@@ -6,12 +6,16 @@
 - hide code boilerplate
 ** better updating in the exmaple
 - only render necessary blocks
+** undo adapter for DataStore
+- can plug it into a different store (like Meteor)
 * Bugs
-** BUG home puts cursor before gray boxes
 ** BUG spell check doesn't work right
 ** BUG undo/redo not implemented
-** BUG drag/drop not implemented
 ** BUG capslock doesn't work
+** DONE drag/drop not implemented
+   CLOSED: [2015-04-02 Thu 22:09]
+** DONE home puts cursor before gray boxes
+   CLOSED: [2015-04-01 Wed 17:07]
 ** DONE selections aren't really handled
    CLOSED: [2015-04-01 Wed 14:26]
 ** DONE demoting the first headline to a chunk loses the rest of the doc

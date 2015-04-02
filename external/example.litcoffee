@@ -67,8 +67,13 @@
       renderBlock: (block)-> ["<span id='plain-#{block._id}' data-block>#{escapeHtml block.text}</span>", block.next]
       setEditor: (@editor)->
         @editor.on 'moved', =>
-          {blockId, offset} = @editor.getBlockLocation()
-          if blockId
+          {startBlock, startOffset} = @editor.getSelectedBlockRange()
+          if startBlock
+            cur = @getBlock @getFirst()
+            offset = startOffset
+            while cur != startBlock
+              offset += cur.text.length
+              cur = @getBlock cur.next
             text = blockText(@blockList()).substring(0, offset)
             lines = text.split('\n')
             line = lines.length
@@ -89,17 +94,16 @@
         [html, block.nextSibling || block.next]
       setEditor: (@editor)->
         @editor.on 'moved', =>
-          {blockId, offset} = @editor.getBlockLocation()
-          if blockId
-            block = @getBlock blockId
-            text = block.text.substring(0, offset)
+          {startBlock, startOffset} = @editor.getSelectedBlockRange()
+          if startBlock
+            text = startBlock.text.substring(0, startOffset)
             lines = text.split('\n')
             line = lines.length
-            cur = blockId
+            block = startBlock
             while block.prev
               block = @getBlock block.prev
               line += block.text.split('\n').length - 1
-            $("#orgStatus").html "Block: #{blockId}#{numSpan ''} line: #{numSpan line} col: #{numSpan last(lines)?.length ? 0} block line: #{numSpan lines.length}"
+            $("#orgStatus").html "Block: #{startBlock._id}#{numSpan ''} line: #{numSpan line} col: #{numSpan last(lines)?.length ? 0} block line: #{numSpan lines.length}"
             return
           $("#orgStatus").html "No selection"
 

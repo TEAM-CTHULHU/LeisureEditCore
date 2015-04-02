@@ -128,9 +128,15 @@ PlainEditing = (function(superClass) {
     this.editor = editor1;
     return this.editor.on('moved', (function(_this) {
       return function() {
-        var blockId, line, lines, offset, ref2, ref3, ref4, text;
-        ref2 = _this.editor.getBlockLocation(), blockId = ref2.blockId, offset = ref2.offset;
-        if (blockId) {
+        var cur, line, lines, offset, ref2, ref3, ref4, startBlock, startOffset, text;
+        ref2 = _this.editor.getSelectedBlockRange(), startBlock = ref2.startBlock, startOffset = ref2.startOffset;
+        if (startBlock) {
+          cur = _this.getBlock(_this.getFirst());
+          offset = startOffset;
+          while (cur !== startBlock) {
+            offset += cur.text.length;
+            cur = _this.getBlock(cur.next);
+          }
           text = blockText(_this.blockList()).substring(0, offset);
           lines = text.split('\n');
           line = lines.length;
@@ -185,19 +191,18 @@ OrgEditing = (function(superClass) {
     this.editor = editor1;
     return this.editor.on('moved', (function(_this) {
       return function() {
-        var block, blockId, cur, line, lines, offset, ref2, ref3, ref4, text;
-        ref2 = _this.editor.getBlockLocation(), blockId = ref2.blockId, offset = ref2.offset;
-        if (blockId) {
-          block = _this.getBlock(blockId);
-          text = block.text.substring(0, offset);
+        var block, line, lines, ref2, ref3, ref4, startBlock, startOffset, text;
+        ref2 = _this.editor.getSelectedBlockRange(), startBlock = ref2.startBlock, startOffset = ref2.startOffset;
+        if (startBlock) {
+          text = startBlock.text.substring(0, startOffset);
           lines = text.split('\n');
           line = lines.length;
-          cur = blockId;
+          block = startBlock;
           while (block.prev) {
             block = _this.getBlock(block.prev);
             line += block.text.split('\n').length - 1;
           }
-          $("#orgStatus").html("Block: " + blockId + (numSpan('')) + " line: " + (numSpan(line)) + " col: " + (numSpan((ref3 = (ref4 = last(lines)) != null ? ref4.length : void 0) != null ? ref3 : 0)) + " block line: " + (numSpan(lines.length)));
+          $("#orgStatus").html("Block: " + startBlock._id + (numSpan('')) + " line: " + (numSpan(line)) + " col: " + (numSpan((ref3 = (ref4 = last(lines)) != null ? ref4.length : void 0) != null ? ref3 : 0)) + " block line: " + (numSpan(lines.length)));
           return;
         }
         return $("#orgStatus").html("No selection");

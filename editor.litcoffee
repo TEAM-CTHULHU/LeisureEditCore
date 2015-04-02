@@ -240,12 +240,6 @@ Events:
           for k,v of old
             bl[k] = v
           bl
-      getBlockLocation: ->
-        s = getSelection()
-        if s.type != 'None' && holder = @options.getContainer s.anchorNode
-          blockId: @options.idForNode holder
-          offset: @getTextPosition holder, s.anchorNode, s.anchorOffset
-        else {}
       domCursor: (node, pos)->
         if node instanceof jQuery
           node = node[0]
@@ -278,40 +272,60 @@ Events:
             .countChars targ.node, targ.pos
         else -1
       loadURL: (url)-> $.get url, (text)=> @options.load text
-      handleInsert: (e, s, text, select)->
+      getSelectedBlockRange: ->
+        s = getSelection()
+        if s.type == 'None' then type: 'None'
+        else
+          startHolder = @options.getContainer(s.anchorNode)
+          type: s.type
+          block: @options.getBlock @options.idForNode startHolder
+          offset: @getTextPosition startHolder, s.anchorNode, s.anchorOffset
+          length: @selectedText(s).length
+      selectBlockRange: (blockRange)->
+        if blockRange.type == 'None' then getSelection().removeAllRanges()
+        else selectRange @rangeForBlockRange blockRange
+      rangeForBlockRange: ({block, offset, length})->
+        startPos = @domCursor(@options.nodeForId(block._id), 0).forwardChars offset
+        endPos = startPos.forwardChars length
+        r = document.createRange()
+        r.setStart startPos.node, startPos.pos
+        r.setEnd endPos.node, endPos.pos
+        r
+      blockRangeForOffsets: (start, length)->
+        {block, offset} = @options.getBlockOffsetForPosition start
+        {block, offset, length, type: if length == 0 then 'Caret' else 'Range'}
+      replace: (e, br, text, select)->
         e.preventDefault()
-        startHolder = @options.getContainer(s.anchorNode)
-        startBlock = @options.getBlock @options.idForNode startHolder
-        blocks = [startBlock]
-        endPos = startPos = @getTextPosition startHolder, s.anchorNode, s.anchorOffset
-        if s.type == 'Range'
-          endHolder = @options.getContainer(s.anchorNode)
-          endId = @options.idForNode endHolder
-          cur = startBlock
-          while cur._id != endId
+        blocks = [br.block]
+        endOffset = br.offset
+        if br.type == 'Range'
+          tot = br.length - br.offset
+          cur = br.block
+          while tot > 0
             blocks.push cur = @options.getBlock cur.next
-          start = @domCursor s.anchorNode, s.anchorOffset
-          end = @domCursor s.focusNode, s.focusOffset
-          endPos = startPos + start.countChars end
-        @editBlocks blocks, startPos, endPos, (text ? getEventChar e), select
+            tot -= cur.text.length
+        @editBlocks blocks, br.offset, br.length, (text ? getEventChar e), select
       backspace: (event, sel, r)->
         if sel.type == 'Range' then return @cutText event
-        holderId = @options.idForNode @options.getContainer(sel.anchorNode)
-        @currentBlockIds = [(@getCopy holderId)._id]
+        holderId = @idAtCaret sel
+        @currentBlockIds = [holderId]
         @handleDelete event, sel, false, (text, pos)-> true
       del: (event, sel, r)->
         if sel.type == 'Range' then return @cutText event
-        holderId = @options.idForNode @options.getContainer(sel.anchorNode)
-        @currentBlockIds = [(@getCopy holderId)._id]
+        holderId = @idAtCaret sel
+        @currentBlockIds = [holderId]
         @handleDelete event, sel, true, (text, pos)-> true
+      idAtCaret: (sel)-> @options.idForNode @options.getContainer(sel.anchorNode)
+      selectedText: (s)->
+        @domCursor(s.anchorNode, s.anchorOffset).getTextTo @domCursor(s.focusNode, s.focusOffset)
       cutText: (e)->
         e.preventDefault()
         sel = getSelection()
         if sel.type == 'Range'
           html = (htmlForNode node for node in sel.getRangeAt(0).cloneContents().childNodes).join ''
-          text = @domCursor(sel.anchorNode, sel.anchorOffset).getTextTo @domCursor(sel.focusNode, sel.focusOffset)
+          text = @selectedText sel
           @options.simulateCut html: html, text: text
-          @handleInsert e, sel, ''
+          @replace e, @getSelectedBlockRange(), ''
       handleDelete: (e, s, forward, delFunc)->
         e.preventDefault()
         if s.type == 'Caret'
@@ -323,28 +337,23 @@ Events:
           blocks = []
           if !result then @ignoreModCheck = @ignoreModCheck || 1
           else
-            if result instanceof Array
-              [pos, stop] = result
-            else
-              pos += if forward then 0 else -1
-              stop = pos + 1
+            pos += if forward then 0 else -1
             if pos < 0
               if block.prev
                 blocks.push bl = @getCopy block.prev
                 pos += bl.text.length
-                stop += bl.text.length
               else return
             else blocks.push block
-            @editBlocks blocks, pos, stop, '', pos
+            @editBlocks blocks, pos, 1, '', pos
         else setTimeout (->alert 'Selection not supported yet'), 1
 
 editBlocks: at this point, just place the cursor after the newContent, later
 on it can select if start and end are different
 
-      editBlocks: (blocks, start, end, newContent, select)->
+      editBlocks: (blocks, start, length, newContent, select)->
         caret = start + newContent.length
         oldText = blockText blocks
-        newText = oldText.substring(0, start) + newContent + oldText.substring end
+        newText = oldText.substring(0, start) + newContent + oldText.substring start + length
         {oldBlocks, newBlocks, offset} = @changeStructure blocks, newText
         if oldBlocks.length || newBlocks.length
           @options.edit oldBlocks, newBlocks
@@ -394,50 +403,71 @@ on it can select if start and end are different
           newBlocks.pop()
         oldBlocks: oldBlocks, newBlocks: newBlocks, offset: offset
       bind: ->
-        @node.on 'dragenter', (e)=>
-          e.preventDefault()
-          #e.stopPropagation()
-          e.originalEvent.dropEffect = 'none'
-          false
         @node.on 'dragover', (e)=>
-          e.preventDefault()
-          #e.stopPropagation()
-          e.originalEvent.dropEffect = 'none'
-          false
-        @node.on 'dragleave', (e)=>
-          e.preventDefault()
-          false
+          @options.dragOver e.originalEvent
+          true
+        @node.on 'dragenter', (e)=>
+          @options.dragEnter  e.originalEvent
+          true
         @node.on 'drop', (e)=>
-          e.preventDefault()
-          #e.stopPropagation()
-          e.originalEvent.dropEffect = 'none'
-          setTimeout (->alert 'DROP not supported yet'), 1
-          false
+          oe = e.originalEvent
+          oe.dataTransfer.dropEffect = 'move'
+          r = document.caretRangeFromPoint oe.clientX, oe.clientY
+          dropPos = @domCursor(r.startContainer, r.startOffset).moveCaret()
+          dropContainer = @domCursor @options.getContainer(r.startContainer), 0
+          blockId = @options.idForNode dropContainer.node
+          offset = dropContainer.countChars dropPos
+          insertText = oe.dataTransfer.getData('text/plain')
+          insert = => @replace e, {type: 'Caret', offset, block: @options.getBlock(blockId), length: 0}, insertText, false
+          if @dragRange
+            start = @domCursor(@options.nodeForId(@dragRange.block._id), 0).forwardChars @dragRange.offset
+            r2 = start.range start.forwardChars @dragRange.length
+            if rangeContainsRange r2, r
+              oe.preventDefault()
+              oe.dataTransfer.dropEffect = 'none'
+              return
+            dr = @dragRange
+            insertOffset = @options.getPositionForBlock(@options.getBlock blockId) + offset
+            cutOffset = @options.getPositionForBlock(@dragRange.block) + @dragRange.offset
+            if r.compareBoundaryPoints(Range.START_TO_START, r2) <= 0
+              @replace e, @dragRange, '', false
+              @replace e, @blockRangeForOffsets(insertOffset, 0), insertText, false
+            else
+              insert()
+              @replace e, @blockRangeForOffsets(cutOffset, @dragRange.length), '', false
+            @dragRange = null
+          else insert()
+          true
         @node.on 'dragstart', (e)=>
           sel = getSelection()
           if sel.type == 'Range'
+            @dragRange = @getSelectedBlockRange()
             clipboard = e.originalEvent.dataTransfer
             clipboard.setData 'text/html', (htmlForNode node for node in sel.getRangeAt(0).cloneContents().childNodes).join ''
-            clipboard.setData 'text/plain', @domCursor(sel.anchorNode, sel.anchorOffset).getTextTo @domCursor(sel.focusNode, sel.focusOffset)
+            clipboard.setData 'text/plain', @selectedText sel
+            clipboard.effectAllowed = 'copyMove'
+            clipboard.dropEffect = 'move'
+          true
+        @node[0].addEventListener 'dragend', (e)=> @dragEnd e
         @node.on 'cut', (e)=>
           e.preventDefault()
           sel = getSelection()
           if sel.type == 'Range'
             clipboard = e.originalEvent.clipboardData
             clipboard.setData 'text/html', (htmlForNode node for node in sel.getRangeAt(0).cloneContents().childNodes).join ''
-            clipboard.setData 'text/plain', @domCursor(sel.anchorNode, sel.anchorOffset).getTextTo @domCursor(sel.focusNode, sel.focusOffset)
-            @handleInsert e, sel, ''
+            clipboard.setData 'text/plain', @selectedText sel
+            @replace e, @getSelectedBlockRange(), ''
         @node.on 'copy', (e)=>
           e.preventDefault()
           sel = getSelection()
           if sel.type == 'Range'
             clipboard = e.originalEvent.clipboardData
             clipboard.setData 'text/html', (htmlForNode node for node in sel.getRangeAt(0).cloneContents().childNodes).join ''
-            clipboard.setData 'text/plain', @domCursor(sel.anchorNode, sel.anchorOffset).getTextTo @domCursor(sel.focusNode, sel.focusOffset)
+            clipboard.setData 'text/plain', @selectedText sel
         @node.on 'paste', (e)=>
-          @handleInsert e, getSelection(), e.originalEvent.clipboardData.getData('text/plain'), false
+          @replace e, getSelectedBlockRange(), e.originalEvent.clipboardData.getData('text/plain'), false
         @node.on 'mousedown', (e)=>
-          @trigger 'moved', this
+          setTimeout (=>@trigger 'moved', this), 1
           @setCurKeyBinding null
         @node.on 'mouseup', (e)=>
           @adjustSelection e
@@ -454,10 +484,17 @@ on it can select if start and end are different
           if bound then @modCancelled = !checkMod
           else
             @modCancelled = false
-            if c == ENTER then @handleInsert e, s, '\n', false
+            if c == ENTER then @replace e, @getSelectedBlockRange(), '\n', false
             else if c == BS then @backspace e, s, r
             else if c == DEL then @del e, s, r
-            else if modifyingKey c, e then @handleInsert e, s, null, false
+            else if modifyingKey c, e then @replace e, @getSelectedBlockRange(), null, false
+      dragEnd: (e)->
+        if @dragRange
+          if e.dataTransfer.dropEffect == 'move'
+            sel = @getSelectedBlockRange()
+            @replace e, @dragRange, ''
+            @selectBlockRange sel
+          @dragRange = null
       blockIdsForSelection: (sel, r)->
         if !sel then sel = getSelection()
         if sel.rangeCount == 1
@@ -598,9 +635,28 @@ Hook methods (required)
 
       edit: (oldBlocks, newBlocks)-> throw new Error "options.edit(func) is not implemented"
 
+Hook methods (optional)
+-----------------------
+
 `simulateCut({html, text})`: The editor calls this when the user hits backspace or delete on selected text.
 
       simulateCut: ({html, text})->
+
+`dragEnter(event)`: alter the drag-enter behavior.  If you want to cancel the drag, for
+instance, call event.preventDefault() and set the dropEffect to 'none'
+
+      dragEnter: (event)->
+        if !event.dataTransfer.getData
+          event.preventDefault()
+          event.dropEffect = 'none'
+
+`dragOver(event)`: alter the drag-enter behavior.  If you want to cancel the drag, for
+instance, call event.preventDefault() and set the dropEffect to 'none'
+
+      dragOver: (event)->
+        if !event.dataTransfer.getData
+          event.preventDefault()
+          event.dropEffect = 'none'
 
 Main code
 ---------
@@ -735,6 +791,20 @@ Main code
           bl = @getBlock next
           next = bl.next
           bl
+      getPositionForBlock: (block)->
+        cur = @getBlock @getFirst()
+        offset = 0
+        while cur._id != block._id
+          offset += cur.text.length
+          cur = @getBlock cur.next
+        offset
+      getBlockOffsetForPosition: (pos)->
+        cur = @getBlock @getFirst()
+        while pos >= cur.text.length
+          pos -= cur.text.length
+          cur = @getBlock cur.next
+        block: cur
+        offset: pos
       renderBlocks: ->
         result = ''
         next = @getFirst()
@@ -906,6 +976,10 @@ adapted from Vega on [StackOverflow](http://stackoverflow.com/a/13127566/1026782
       )
 
     last = (array)-> array.length && array[array.length - 1]
+
+    rangeContainsRange = (r1, r2)->
+      r1.compareBoundaryPoints(Range.START_TO_START, r2) <= 0 &&
+        r2.compareBoundaryPoints(Range.END_TO_END, r1) <= 0
 
 Exports
 =======
