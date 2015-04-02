@@ -404,16 +404,13 @@ on it can select if start and end are different
         oldBlocks: oldBlocks, newBlocks: newBlocks, offset: offset
       bind: ->
         @node.on 'dragover', (e)=>
-          #(oe = e.originalEvent).dataTransfer.dropEffect = 'copy'
           @options.dragOver e.originalEvent
           true
         @node.on 'dragenter', (e)=>
-          #(oe = e.originalEvent).dataTransfer.dropEffect = 'copy'
           @options.dragEnter  e.originalEvent
           true
         @node.on 'drop', (e)=>
           oe = e.originalEvent
-          #oe.preventDefault()
           oe.dataTransfer.dropEffect = 'move'
           r = document.caretRangeFromPoint oe.clientX, oe.clientY
           dropPos = @domCursor(r.startContainer, r.startOffset).moveCaret()
@@ -425,19 +422,17 @@ on it can select if start and end are different
           if @dragRange
             start = @domCursor(@options.nodeForId(@dragRange.block._id), 0).forwardChars @dragRange.offset
             r2 = start.range start.forwardChars @dragRange.length
-            if rangeContainsRange r2, r
+            insertOffset = @options.getPositionForBlock(@options.getBlock blockId) + offset
+            cutOffset = @options.getPositionForBlock(@dragRange.block) + @dragRange.offset
+            if cutOffset <= insertOffset <= cutOffset + @dragRange.length
               oe.preventDefault()
               oe.dataTransfer.dropEffect = 'none'
               return
             dr = @dragRange
-            insertOffset = @options.getPositionForBlock(@options.getBlock blockId) + offset
-            cutOffset = @options.getPositionForBlock(@dragRange.block) + @dragRange.offset
-            if r.compareBoundaryPoints(Range.START_TO_START, r2) <= 0
-              console.log "cut first", @dragRange
+            if insertOffset <= cutOffset
               @replace e, @dragRange, '', false
               @replace e, @blockRangeForOffsets(insertOffset, 0), insertText, false
             else
-              console.log "insert first", @dragRange
               insert()
               @replace e, @blockRangeForOffsets(cutOffset, @dragRange.length), '', false
             @dragRange = null
@@ -453,7 +448,6 @@ on it can select if start and end are different
             clipboard.effectAllowed = 'copyMove'
             clipboard.dropEffect = 'move'
           true
-        #@node.on 'dragend', (e)=>
         @node[0].addEventListener 'dragend', (e)=> @dragEnd e
         @node.on 'cut', (e)=>
           e.preventDefault()
@@ -496,9 +490,7 @@ on it can select if start and end are different
             else if modifyingKey c, e then @replace e, @getSelectedBlockRange(), null, false
       dragEnd: (e)->
         if @dragRange
-          console.log "drag end", e
           if e.dataTransfer.dropEffect == 'move'
-            console.log "cutting old selection"
             sel = @getSelectedBlockRange()
             @replace e, @dragRange, ''
             @selectBlockRange sel

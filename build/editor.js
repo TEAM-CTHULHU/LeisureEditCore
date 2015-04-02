@@ -471,20 +471,18 @@ LeisureEditCore = (function(superClass) {
         if (_this.dragRange) {
           start = _this.domCursor(_this.options.nodeForId(_this.dragRange.block._id), 0).forwardChars(_this.dragRange.offset);
           r2 = start.range(start.forwardChars(_this.dragRange.length));
-          if (rangeContainsRange(r2, r)) {
+          insertOffset = _this.options.getPositionForBlock(_this.options.getBlock(blockId)) + offset;
+          cutOffset = _this.options.getPositionForBlock(_this.dragRange.block) + _this.dragRange.offset;
+          if ((cutOffset <= insertOffset && insertOffset <= cutOffset + _this.dragRange.length)) {
             oe.preventDefault();
             oe.dataTransfer.dropEffect = 'none';
             return;
           }
           dr = _this.dragRange;
-          insertOffset = _this.options.getPositionForBlock(_this.options.getBlock(blockId)) + offset;
-          cutOffset = _this.options.getPositionForBlock(_this.dragRange.block) + _this.dragRange.offset;
-          if (r.compareBoundaryPoints(Range.START_TO_START, r2) <= 0) {
-            console.log("cut first", _this.dragRange);
+          if (insertOffset <= cutOffset) {
             _this.replace(e, _this.dragRange, '', false);
             _this.replace(e, _this.blockRangeForOffsets(insertOffset, 0), insertText, false);
           } else {
-            console.log("insert first", _this.dragRange);
             insert();
             _this.replace(e, _this.blockRangeForOffsets(cutOffset, _this.dragRange.length), '', false);
           }
@@ -624,9 +622,7 @@ LeisureEditCore = (function(superClass) {
   LeisureEditCore.prototype.dragEnd = function(e) {
     var sel;
     if (this.dragRange) {
-      console.log("drag end", e);
       if (e.dataTransfer.dropEffect === 'move') {
-        console.log("cutting old selection");
         sel = this.getSelectedBlockRange();
         this.replace(e, this.dragRange, '');
         this.selectBlockRange(sel);

@@ -422,14 +422,14 @@ on it can select if start and end are different
           if @dragRange
             start = @domCursor(@options.nodeForId(@dragRange.block._id), 0).forwardChars @dragRange.offset
             r2 = start.range start.forwardChars @dragRange.length
-            if rangeContainsRange r2, r
+            insertOffset = @options.getPositionForBlock(@options.getBlock blockId) + offset
+            cutOffset = @options.getPositionForBlock(@dragRange.block) + @dragRange.offset
+            if cutOffset <= insertOffset <= cutOffset + @dragRange.length
               oe.preventDefault()
               oe.dataTransfer.dropEffect = 'none'
               return
             dr = @dragRange
-            insertOffset = @options.getPositionForBlock(@options.getBlock blockId) + offset
-            cutOffset = @options.getPositionForBlock(@dragRange.block) + @dragRange.offset
-            if r.compareBoundaryPoints(Range.START_TO_START, r2) <= 0
+            if insertOffset <= cutOffset
               @replace e, @dragRange, '', false
               @replace e, @blockRangeForOffsets(insertOffset, 0), insertText, false
             else
@@ -976,10 +976,6 @@ adapted from Vega on [StackOverflow](http://stackoverflow.com/a/13127566/1026782
       )
 
     last = (array)-> array.length && array[array.length - 1]
-
-    rangeContainsRange = (r1, r2)->
-      r1.compareBoundaryPoints(Range.START_TO_START, r2) <= 0 &&
-        r2.compareBoundaryPoints(Range.END_TO_END, r1) <= 0
 
 Exports
 =======
