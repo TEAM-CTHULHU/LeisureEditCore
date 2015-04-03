@@ -24,41 +24,52 @@
         else orgDoc parseOrgMode text.replace /\r\n/g, '\n'
       makeChange: (changes)->
         result = super changes
-        @findParents()
-        @findChildren()
+        @links = computeLinks @first, @blocks
         result
-      findParents: ->
-        parents = @parents = {}
-        @findStructure @first, (parent, child)-> parents[child._id] = parent?._id
-      findChildren: ->
-        children = @children = {}
-        for block in @blockList()
-          block.previousSibling = block.nextSibling = null
-        @findStructure @first, (parent, child)=>
-          parentId = if parent then parent._id else 'TOP'
-          childList = (children[parentId] ? (children[parentId] = []))
-          prev = @blocks[last childList]
-          childList.push child._id
-          if prev
-            child.previousSibling = prev._id
-            prev.nextSibling = child._id
-      findStructure: (blockId, func, all)->
-        original = @blocks[blockId]
-        if original.type == 'headline'
-          ancestors = []
-          while blockId && block = @getBlock blockId
-            parent = last ancestors
-            if block.type == 'headline'
-              if !parent || block.level > parent.level then ancestors.push block
-              else
-                while block.level <= parent.level
-                  ancestors.pop()
-                  parent = last ancestors
-                ancestors.push block
-              parent = if ancestors.length > 1 then ancestors[ancestors.length - 2]
-            func parent, block
-            blockId = block.next
-        else func null, original
+      parent: (thing)-> @blocks[@links.parent[getId thing]]
+      firstChild: (thing)-> @blocks[@links.firstChild[getId thing]]
+      lastChild: (thing)-> @blocks[@links.lastChild[getId thing]]
+      children: (thing)->
+        c = []
+        child = @firstChild thing
+        while child
+          c.push child
+          child = @nextSibling child
+        c
+      nextSibling: (thing)-> @blocks[@links.nextSibling[getId thing]]
+      previousSibling: (thing)-> @blocks[@links.previousSibling[getId thing]]
+
+    getId = (thing)-> if typeof thing == 'string' then thing else thing._id
+
+    computeLinks = (first, blocks, overlay = {})->
+      getBlock = (id)-> overlay[id] ? blocks[id]
+      parent = {}
+      firstChild = {}
+      lastChild = {}
+      nextSibling = {}
+      previousSibling = {}
+      parentStack = ['TOP']
+      siblingStack = [[]]
+      cur = getBlock first
+      while cur
+        curParent = getBlock last parentStack
+        if cur.type == 'headline'
+          while curParent && cur.level <= curParent.level
+            lastChild[curParent._id] = last(last siblingStack)._id
+            parentStack.pop()
+            siblingStack.pop()
+            curParent = getBlock last parentStack
+        parent[cur._id] = last parentStack
+        if previousSibling = last(last(siblingStack))
+          nextSibling[previousSibling] = cur._id
+          previousSibling[cur._id] = previousSibling
+        else firstChild[last parentStack] = cur._id
+        last(siblingStack).push cur._id
+        if cur.type == 'headline'
+          parentStack.push cur._id
+          siblingStack.push []
+        cur = getBlock cur.next
+      {parent, firstChild, lastChild, nextSibling, previousSibling}
 
     class PlainEditing extends DataStoreEditingOptions
       nodeForId: (id)-> $("#plain-#{id}")
@@ -82,16 +93,24 @@
           $("#plainStatus").html "No selection"
 
     class OrgEditing extends DataStoreEditingOptions
+      changed: (changes)->
+        for id, block of changes.adds
+          console.log "add", block
+        for id of changes.removes
+          console.log "remove", changes.old[id]
+        for id of changes.updates
+          console.log "update", changes.old[id], "->", @getBlock(id)
+        super changes
       nodeForId: (id)-> $("#fancy-#{id}")
       idForNode: (node)-> node.id.match(/^fancy-(.*)$/)?[1]
       parseBlocks: (text)-> @data.parseBlocks text
       renderBlock: (block)->
         html = if block.type == 'headline'
-          "<div #{blockAttrs block} contenteditable='false'>#{blockLabel block}<div contenteditable='true'>#{contentSpan block.text, 'text'}#{(@renderBlock(@getBlock childId)[0] for childId in @data.children[block._id] ? []).join ''}</div></div>"
+          "<div #{blockAttrs block} contenteditable='false'>#{blockLabel block}<div contenteditable='true'>#{contentSpan block.text, 'text'}#{(@renderBlock(child)[0] for child in @data.children(block) ? []).join ''}</div></div>"
         else if block.type == 'code'
           "<span #{blockAttrs block}>#{blockLabel block}#{escapeHtml block.text}</span>"
         else "<span #{blockAttrs block}>#{blockLabel block}#{escapeHtml block.text}</span>"
-        [html, block.nextSibling || block.next]
+        [html, @data.nextSibling(block)?._id || block.next]
       setEditor: (@editor)->
         @editor.on 'moved', =>
           {startBlock, startOffset} = @editor.getSelectedBlockRange()
@@ -106,6 +125,12 @@
             $("#orgStatus").html "Block: #{startBlock._id}#{numSpan ''} line: #{numSpan line} col: #{numSpan last(lines)?.length ? 0} block line: #{numSpan lines.length}"
             return
           $("#orgStatus").html "No selection"
+
+    class RenderingComputer
+      constructor: (@changes, @options)->
+      renderChanges: ->
+      promoteChildren: (headlineId)->
+        
 
     numSpan = (n)-> "<span class='status-num'>#{n}</span>"
 

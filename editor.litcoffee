@@ -345,7 +345,7 @@ Events:
                 pos += bl.text.length
               else return
             else blocks.push block
-            @editBlocks blocks, pos, 1, '', pos
+            @editBlocks blocks, pos, 1, ''
         else setTimeout (->alert 'Selection not supported yet'), 1
 
 editBlocks: at this point, just place the cursor after the newContent, later
@@ -404,6 +404,11 @@ on it can select if start and end are different
           newBlocks.pop()
         oldBlocks: oldBlocks, newBlocks: newBlocks, offset: offset
       bind: ->
+        @bindDragAndDrop()
+        @bindClipboard()
+        @bindMouse()
+        @bindKeyboard()
+      bindDragAndDrop: ->
         @node.on 'dragover', (e)=>
           @options.dragOver e.originalEvent
           true
@@ -449,7 +454,14 @@ on it can select if start and end are different
             clipboard.effectAllowed = 'copyMove'
             clipboard.dropEffect = 'move'
           true
-        @node[0].addEventListener 'dragend', (e)=> @dragEnd e
+        @node[0].addEventListener 'dragend', (e)=>
+          if dragRange
+            if e.dataTransfer.dropEffect == 'move'
+              sel = @getSelectedBlockRange()
+              @replace e, dragRange, ''
+              @selectBlockRange sel
+            dragRange = null
+      bindClipboard: ->
         @node.on 'cut', (e)=>
           e.preventDefault()
           sel = getSelection()
@@ -466,13 +478,15 @@ on it can select if start and end are different
             clipboard.setData 'text/html', (htmlForNode node for node in sel.getRangeAt(0).cloneContents().childNodes).join ''
             clipboard.setData 'text/plain', @selectedText sel
         @node.on 'paste', (e)=>
-          @replace e, getSelectedBlockRange(), e.originalEvent.clipboardData.getData('text/plain'), false
+          @replace e, @getSelectedBlockRange(), e.originalEvent.clipboardData.getData('text/plain'), false
+      bindMouse: ->
         @node.on 'mousedown', (e)=>
           setTimeout (=>@trigger 'moved', this), 1
           @setCurKeyBinding null
         @node.on 'mouseup', (e)=>
           @adjustSelection e
           @trigger 'moved', this
+      bindKeyboard: ->
         @node.on 'keyup', (e)=> @handleKeyup e
         @node.on 'keydown', (e)=>
           @modCancelled = false
@@ -489,14 +503,6 @@ on it can select if start and end are different
             else if c == BS then @backspace e, s, r
             else if c == DEL then @del e, s, r
             else if modifyingKey c, e then @replace e, @getSelectedBlockRange(), null, false
-      dragEnd: (e)->
-        console.log "drag end"
-        if dragRange
-          if e.dataTransfer.dropEffect == 'move'
-            sel = @getSelectedBlockRange()
-            @replace e, dragRange, ''
-            @selectBlockRange sel
-          dragRange = null
       blockIdsForSelection: (sel, r)->
         if !sel then sel = getSelection()
         if sel.rangeCount == 1
@@ -855,24 +861,27 @@ Events:
           bl = @blocks[next]
           next = bl.next
           bl
-      change: (changes)-> @triggerChange @makeChange changes
-      makeChange: ({first, removes, sets})->
+      change: (changes)-> @trigger 'change', @makeChange changes
+      makeChange: (changes)->
+        updates = {}
+        adds = {}
+        removes = []
         old = {}
-        newBlocks = {}
-        removed = []
-        oldFirst = first
-        @first = first
-        for id of removes
+        result = {adds, updates, removes, old, oldFirst: @first}
+        @first = changes.first
+        for id of changes.removes
           if bl = @blocks[id]
-            removed.push bl
+            old[id] = bl
+            removes[id] = true
             delete @blocks[id]
-        for id, block of sets
-          if @blocks[id] then old[id] = block
-          else newBlocks[id] = block
+        for id, block of changes.sets
+          if @blocks[id]
+            old[id] = @blocks[id]
+            updates[id] = true
+          else adds[id] = block
           @blocks[id] = block
         @check()
-        adds: newBlocks, updates: old, removes: removed, oldFirst: first
-      triggerChange: (changes)-> @trigger 'change', changes
+        result
 
 DataStoreEditingOptions
 =======================
@@ -880,12 +889,12 @@ DataStoreEditingOptions
     class DataStoreEditingOptions extends BasicEditingOptions
       constructor: (@data)->
         super()
-        @data.on 'change', (change)=> @changed change
+        @data.on 'change', (changes)=> @changed changes
       edit: (oldBlocks, newBlocks)-> @replaceBlocks oldBlocks, newBlocks
       getBlock: (id)-> @data.getBlock id
       getFirst: (first)-> @data.first
       change: (changes)-> @data.change changes
-      changed: (change)-> @editor.node.html @renderBlocks()
+      changed: (changes)-> @editor.node.html @renderBlocks()
 
 Utilities
 =========

@@ -357,7 +357,7 @@ LeisureEditCore = (function(superClass) {
         } else {
           blocks.push(block);
         }
-        return this.editBlocks(blocks, pos, 1, '', pos);
+        return this.editBlocks(blocks, pos, 1, '');
       }
     } else {
       return setTimeout((function() {
@@ -439,6 +439,13 @@ LeisureEditCore = (function(superClass) {
   };
 
   LeisureEditCore.prototype.bind = function() {
+    this.bindDragAndDrop();
+    this.bindClipboard();
+    this.bindMouse();
+    return this.bindKeyboard();
+  };
+
+  LeisureEditCore.prototype.bindDragAndDrop = function() {
     this.node.on('dragover', (function(_this) {
       return function(e) {
         _this.options.dragOver(e.originalEvent);
@@ -519,11 +526,22 @@ LeisureEditCore = (function(superClass) {
         return true;
       };
     })(this));
-    this.node[0].addEventListener('dragend', (function(_this) {
+    return this.node[0].addEventListener('dragend', (function(_this) {
       return function(e) {
-        return _this.dragEnd(e);
+        var sel;
+        if (dragRange) {
+          if (e.dataTransfer.dropEffect === 'move') {
+            sel = _this.getSelectedBlockRange();
+            _this.replace(e, dragRange, '');
+            _this.selectBlockRange(sel);
+          }
+          return dragRange = null;
+        }
       };
     })(this));
+  };
+
+  LeisureEditCore.prototype.bindClipboard = function() {
     this.node.on('cut', (function(_this) {
       return function(e) {
         var clipboard, node, sel;
@@ -567,11 +585,14 @@ LeisureEditCore = (function(superClass) {
         }
       };
     })(this));
-    this.node.on('paste', (function(_this) {
+    return this.node.on('paste', (function(_this) {
       return function(e) {
-        return _this.replace(e, getSelectedBlockRange(), e.originalEvent.clipboardData.getData('text/plain'), false);
+        return _this.replace(e, _this.getSelectedBlockRange(), e.originalEvent.clipboardData.getData('text/plain'), false);
       };
     })(this));
+  };
+
+  LeisureEditCore.prototype.bindMouse = function() {
     this.node.on('mousedown', (function(_this) {
       return function(e) {
         setTimeout((function() {
@@ -580,12 +601,15 @@ LeisureEditCore = (function(superClass) {
         return _this.setCurKeyBinding(null);
       };
     })(this));
-    this.node.on('mouseup', (function(_this) {
+    return this.node.on('mouseup', (function(_this) {
       return function(e) {
         _this.adjustSelection(e);
         return _this.trigger('moved', _this);
       };
     })(this));
+  };
+
+  LeisureEditCore.prototype.bindKeyboard = function() {
     this.node.on('keyup', (function(_this) {
       return function(e) {
         return _this.handleKeyup(e);
@@ -619,19 +643,6 @@ LeisureEditCore = (function(superClass) {
         }
       };
     })(this));
-  };
-
-  LeisureEditCore.prototype.dragEnd = function(e) {
-    var sel;
-    console.log("drag end");
-    if (dragRange) {
-      if (e.dataTransfer.dropEffect === 'move') {
-        sel = this.getSelectedBlockRange();
-        this.replace(e, dragRange, '');
-        this.selectBlockRange(sel);
-      }
-      return dragRange = null;
-    }
   };
 
   LeisureEditCore.prototype.blockIdsForSelection = function(sel, r) {
@@ -1163,43 +1174,43 @@ DataStore = (function(superClass) {
   };
 
   DataStore.prototype.change = function(changes) {
-    return this.triggerChange(this.makeChange(changes));
+    return this.trigger('change', this.makeChange(changes));
   };
 
-  DataStore.prototype.makeChange = function(arg) {
-    var bl, block, first, id, newBlocks, old, oldFirst, removed, removes, sets;
-    first = arg.first, removes = arg.removes, sets = arg.sets;
+  DataStore.prototype.makeChange = function(changes) {
+    var adds, bl, block, id, old, ref, removes, result, updates;
+    updates = {};
+    adds = {};
+    removes = [];
     old = {};
-    newBlocks = {};
-    removed = [];
-    oldFirst = first;
-    this.first = first;
-    for (id in removes) {
+    result = {
+      adds: adds,
+      updates: updates,
+      removes: removes,
+      old: old,
+      oldFirst: this.first
+    };
+    this.first = changes.first;
+    for (id in changes.removes) {
       if (bl = this.blocks[id]) {
-        removed.push(bl);
+        old[id] = bl;
+        removes[id] = true;
         delete this.blocks[id];
       }
     }
-    for (id in sets) {
-      block = sets[id];
+    ref = changes.sets;
+    for (id in ref) {
+      block = ref[id];
       if (this.blocks[id]) {
-        old[id] = block;
+        old[id] = this.blocks[id];
+        updates[id] = true;
       } else {
-        newBlocks[id] = block;
+        adds[id] = block;
       }
       this.blocks[id] = block;
     }
     this.check();
-    return {
-      adds: newBlocks,
-      updates: old,
-      removes: removed,
-      oldFirst: first
-    };
-  };
-
-  DataStore.prototype.triggerChange = function(changes) {
-    return this.trigger('change', changes);
+    return result;
   };
 
   return DataStore;
@@ -1213,8 +1224,8 @@ DataStoreEditingOptions = (function(superClass) {
     this.data = data;
     DataStoreEditingOptions.__super__.constructor.call(this);
     this.data.on('change', (function(_this) {
-      return function(change) {
-        return _this.changed(change);
+      return function(changes) {
+        return _this.changed(changes);
       };
     })(this));
   }
@@ -1235,7 +1246,7 @@ DataStoreEditingOptions = (function(superClass) {
     return this.data.change(changes);
   };
 
-  DataStoreEditingOptions.prototype.changed = function(change) {
+  DataStoreEditingOptions.prototype.changed = function(changes) {
     return this.editor.node.html(this.renderBlocks());
   };
 

@@ -255,6 +255,7 @@ if contain is true and the final location is 0 then go to the end of
 the previous text node (node, node.length)
 
       forwardChars: (count, contain)->
+        if count == 0 then return this
         n = this
         count += @pos
         while !n.isEmpty() && 0 <= count

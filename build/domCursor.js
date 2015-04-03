@@ -259,6 +259,9 @@ DOMCursor = (function() {
 
   DOMCursor.prototype.forwardChars = function(count, contain) {
     var n;
+    if (count === 0) {
+      return this;
+    }
     n = this;
     count += this.pos;
     while (!n.isEmpty() && 0 <= count) {
