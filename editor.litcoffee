@@ -1,13 +1,13 @@
 LeisureEditCore
-========
+===============
 Copyright (C) 2015, Bill Burdick, Roy Riggs, TEAM CTHULHU
 
-Licensed with ZLIB license (see "License", below).
+Licensed with ZLIB license (see "[License](#license)", below).
 
 Welcome to LeisureEditCore!  Are you trying to make editable documents
 that are more than just text editors or word processors?  This library
 tries to make it easier to make interesting editable documents.  You
-can find it on [Github](https://github.com/zot/LeisureEditCore).
+can find it on [Github](https://github.com/TEAM-CTHULHU/LeisureEditCore).
 LeisureEditCore what [Leisure's](https://github.com/zot/Leisure)
 editor, extracted out into a small HTML5 library.  LeisureEditCore is
 pluggable with an options object that contains customization hooks.
@@ -34,7 +34,7 @@ When the user makes a change, the editor:
 4. replaces the new DOM into the page
 
 Using/Installing LeisureEditCore
-===================
+================================
 Make sure your webpage loads the javascript files in the `build` directory.  Follow
 the instructions below to use it.
 
@@ -107,8 +107,8 @@ Building
 If you modify LeisureEditCore and want to build it, you can use the Cakefile.  It needs the
 `which` npm package (`npm install which`).
 
-License
-=====================
+<a name="license"></a>License
+=============================
 Licensed with ZLIB license.
 
 This software is provided 'as-is', without any express or implied
@@ -131,7 +131,7 @@ misrepresented as being the original software.
 
 Code
 ====
-Here is the code for [LeisureEditCore](https://github.com/zot/LeisureEditCore).
+Here is the code for [LeisureEditCore](https://github.com/TEAM-CTHULHU/LeisureEditCore).
 
     {
       selectRange,
