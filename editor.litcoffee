@@ -4,22 +4,21 @@ Copyright (C) 2015, Bill Burdick, Roy Riggs, TEAM CTHULHU
 
 Licensed with ZLIB license (see "License", below).
 
-Welcome to LeisureEditCore, a tiny library for HTML5 that you can use to make
-your own editors.  You can find it on
-[Github](https://github.com/zot/LeisureEditCore).  LeisureEditCore what
-[Leisure's](https://github.com/zot/Leisure) editor, extracted out into
-a small HTML5 library.  LeisureEditCore is pluggable with an options object
-that contains customization hooks.  Code and examples are in
-Coffeescript (a JS build is provided as a convenience).
-
-Here's an editing principle we use:
------------------------------------
-You should only be able to edit what you can see,
-i.e. backspace/delete/cut/replace should not delete hidden text.
+Welcome to LeisureEditCore!  Are you trying to make editable documents
+that are more than just text editors or word processors?  This library
+tries to make it easier to make interesting editable documents.  You
+can find it on [Github](https://github.com/zot/LeisureEditCore).
+LeisureEditCore what [Leisure's](https://github.com/zot/Leisure)
+editor, extracted out into a small HTML5 library.  LeisureEditCore is
+pluggable with an options object that contains customization hooks.
+Code and examples are in Coffeescript (a JS build is provided as a
+convenience).
 
 Basic Idea
 ==========
-LeisureEditCore edits a doubly-linked list of "blocks" that can render as DOM nodes.
+
+LeisureEditCore edits a doubly-linked list of newline-terminated text
+"blocks" that can render as DOM nodes (and maybe in interesting ways!)
 
 The rendered DOM tree contains the full text of the block list in the
 proper order, along with ids from the blocks.  Some of the text may
