@@ -10,8 +10,8 @@
 
 #editorLayout {
     height: 100%;
-    width: calc(50% - 10px);
-    display: inline-block;
+    /*width: calc(50% - 10px);*/
+    /* display: inline-block; */
     vertical-align: top;
 }
 
@@ -51,12 +51,12 @@
 }
 
 #sourceLayout {
-    width: calc(50% - 10px);
-    display: inline-block;
-    height: 100%;
+    /*width: calc(50% - 10px);*/
+    /* display: inline-block; */
+    max-height: calc(50% - 5px);
     vertical-align: top;
 }
-#source {
+#plainEditor {
     white-space: pre;
     max-height: calc(100% - 2.5em);
     margin-bottom: 0.5em;
@@ -66,5 +66,27 @@
 }
 .status-num {
     min-width: 3ex;
+    text-align: left;
     display: inline-block;
+}
+#blocksLayout {
+    /*width: calc(50% - 10px);*/
+    /* display: inline-block; */
+    max-height: calc(50% - 5px);
+    vertical-align: top;
+    padding-top: 0.5em;
+}
+#blocks {
+    white-space: pre;
+    max-height: calc(100% - 2.5em);
+    margin-bottom: 0.5em;
+    border: solid rgb(230, 173, 205) 2px;
+    padding: 5px;
+    overflow: auto;
+    white-space: pre;
+}
+body {
+    column-count: 2;
+    -moz-column-count: 2;
+    -webkit-column-count: 2;
 }

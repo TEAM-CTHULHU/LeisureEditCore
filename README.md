@@ -212,6 +212,7 @@ Observable class
       on: (type, callback)->
         if !@listeners[type] then @listeners[type] = []
         @listeners[type].push callback
+        this
       trigger: (type, args...)->
         for listener in @listeners[type] || []
           listener.apply null, args
@@ -277,11 +278,10 @@ Events:
         s = getSelection()
         if s.type == 'None' then type: 'None'
         else
-          startHolder = @options.getContainer(s.anchorNode)
-          type: s.type
-          block: @options.getBlock @options.idForNode startHolder
-          offset: @getTextPosition startHolder, s.anchorNode, s.anchorOffset
-          length: @selectedText(s).length
+          p = @blockOffset s.anchorNode, s.anchorOffset
+          p.type = s.type
+          p.length = @selectedText(s).length
+          p
       selectBlockRange: (blockRange)->
         if blockRange.type == 'None' then getSelection().removeAllRanges()
         else selectRange @rangeForBlockRange blockRange
@@ -292,6 +292,16 @@ Events:
         r.setStart startPos.node, startPos.pos
         r.setEnd endPos.node, endPos.pos
         r
+      blockOffset: (node, offset)->
+        if node instanceof Range
+          offset = node.startOffset
+          node = node.startContainer
+        else if node instanceof DOMCursor
+          offset = node.pos
+          node = node.node
+        startHolder = @options.getContainer(node)
+        block: @options.getBlock @options.idForNode startHolder
+        offset: @getTextPosition startHolder, node, offset
       blockRangeForOffsets: (start, length)->
         {block, offset} = @options.getBlockOffsetForPosition start
         {block, offset, length, type: if length == 0 then 'Caret' else 'Range'}
@@ -345,7 +355,7 @@ Events:
                 pos += bl.text.length
               else return
             else blocks.push block
-            @editBlocks blocks, pos, 1, ''
+            @editBlocks blocks, pos, 1, '', false
         else setTimeout (->alert 'Selection not supported yet'), 1
 
 editBlocks: at this point, just place the cursor after the newContent, later
@@ -358,24 +368,34 @@ on it can select if start and end are different
         {oldBlocks, newBlocks, offset} = @changeStructure blocks, newText
         if oldBlocks.length || newBlocks.length
           @options.edit oldBlocks, newBlocks
-        if newBlocks.length
-          startPos = @domCursor @options.nodeForId newBlocks[0]._id, 0
-        else
-          offset = 0
-          if oldBlocks.length
-            next = @options.getBlock @options.getBlock(oldBlocks[0].prev).next
-            if !next then return
-            startPos = @domCursor @options.nodeForId newBlocks[0]._id, 0
-          else startPos = @domCursor @options.nodeForId blocks[0]._id, 0
-        if select
-          r = document.createRange()
-          startPos = startPos.forwardChars start + offset, true
-          r.setStart startPos.node, startPos.pos
-          endPos = startPos.forwardChars newContent.length, true
-          r.setEnd endPos.node, endPos.pos
-          selectRange r
-        else
-          startPos.forwardChars(start + offset + newContent.length, true).moveCaret()
+          if !newBlocks.length
+            offset = 0
+            if !(startBlock = @options.getBlock @options.getBlock(oldBlocks[0].prev).next)
+              return
+          else
+            startBlock = newBlocks[0]
+            offset += start
+            while offset < 0
+              if !(block = @options.getBlock startBlock.prev)
+                offset = 0
+                break
+              startBlock = block
+              offset += startBlock.text.length
+            while offset > startBlock.text.length
+              if !(block = @options.getBlock startBlock.next)
+                offset = startBlock.text.length
+                break
+              offset -= startBlock.text.length
+              startBlock = block
+          startPos = @domCursor @options.nodeForId(startBlock._id), 0
+          if select
+            r = document.createRange()
+            startPos = startPos.forwardChars offset, true
+            r.setStart startPos.node, startPos.pos
+            endPos = startPos.forwardChars newContent.length, true
+            r.setEnd endPos.node, endPos.pos
+            selectRange r
+          else startPos.forwardChars(offset + newContent.length, true).moveCaret()
 
 `changeStructure(oldBlocks, newText)`: Compute blocks affected by transforming oldBlocks into newText
 
@@ -583,14 +603,20 @@ on it can select if start and end are different
           pos = pos.backwardChar()
           pos.moveCaret()
         pos
+      firstText: -> @domCursor(@node, 0).firstText().node
       moveDown: ->
         linePos = prev = pos = @domCursorForCaret().save()
-        if !(@prevKeybinding in [keyFuncs.nextLine, keyFuncs.previousLine]) then @movementGoal = @options.blockColumn pos
-        line = 0
+        if !(@prevKeybinding in [keyFuncs.nextLine, keyFuncs.previousLine])
+          @movementGoal = @options.blockColumn pos
+          line = 0
+        else line = (if pos.pos == 0 && pos.node == @firstText() then 1 else 0)
+        lineTop = posFor(linePos).top
         while !(pos = @moveForward()).isEmpty()
-          if linePos.differentLines pos
+          p = posFor(pos)
+          if lineTop < p.top
             line++
-            linePos = pos
+            pos = linePos = p.pos
+            lineTop = p.top
           if line == 2 then return prev.moveCaret()
           if line == 1 && @options.blockColumn(pos) >= @movementGoal
             return @moveToBestPosition pos, prev, linePos
@@ -699,14 +725,16 @@ Main code
 
 `replaceBlocks(oldBlocks, newBlocks) -> removedBlocks`: override this if you need to link up the blocks, etc., like so that `renderBlock()` can return the proper next id, for instance.
 
-      replaceBlocks: (oldBlocks, newBlocks)->
+      replaceBlocks: (oldBlocks, newBlocks)-> @change @changesFor oldBlocks, newBlocks
+
+      changesFor: (oldBlocks, newBlocks)->
         newBlockMap = {}
         removes = {}
         changes = {removes, sets: newBlockMap, first: @getFirst(), oldBlocks, newBlocks}
         prev = @computeRemovesAndNewBlockIds oldBlocks, newBlocks, newBlockMap, removes
         @patchNewBlocks oldBlocks, newBlocks, changes, newBlockMap, removes, prev
         @removeDuplicateChanges newBlockMap
-        @change changes
+        changes
 
       computeRemovesAndNewBlockIds: (oldBlocks, newBlocks, newBlockMap, removes)->
         for oldBlock in oldBlocks[newBlocks.length...oldBlocks.length]
@@ -823,13 +851,22 @@ Main code
 DataStore
 =========
 Events:
-  `change {adds, updates, removes, oldFirst}`: data changed
+  `change {adds, updates, removes, oldFirst, old}`: data changed
+
+  * `oldFirst id`: the previous first (might be the same as the current)
+  * `adds {id->true}`: added items
+  * `updates {id->true}`: updated items
+  * `removes {id->true}`: removed items
+  * `old {id->old block}`: the old items from updates and removes
 
     class DataStore extends Observable
       constructor: ->
         super()
         @blocks = {}
       getBlock: (id)-> @blocks[id]
+      load: (changes)->
+        @change changes
+        @trigger 'load'
       check: ->
         seen = {}
         next = @first
@@ -890,6 +927,9 @@ DataStoreEditingOptions
       constructor: (@data)->
         super()
         @data.on 'change', (changes)=> @changed changes
+      load: (text)->
+        @data.load @changesFor @blockList(), @parseBlocks text
+        @trigger 'load'
       edit: (oldBlocks, newBlocks)-> @replaceBlocks oldBlocks, newBlocks
       getBlock: (id)-> @data.getBlock id
       getFirst: (first)-> @data.first
@@ -988,6 +1028,11 @@ adapted from Vega on [StackOverflow](http://stackoverflow.com/a/13127566/1026782
 
     last = (array)-> array.length && array[array.length - 1]
 
+    posFor = (pos)->
+      result = (if pos.pos == pos.node.length && pos.node.data[pos.pos - 1] == '\n' && !(p = pos.save().next()).isEmpty() then p else pos).textPosition()
+      result.pos = p ? pos
+      result
+
 Exports
 =======
 
@@ -1000,5 +1045,6 @@ Exports
     root.last = last
     root.link = link
     root.blockText = blockText
+    root.posFor = posFor
 
     if window? then window.LeisureEditCore = root else module.exports = root

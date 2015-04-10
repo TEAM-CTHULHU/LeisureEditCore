@@ -76,7 +76,8 @@ build = (watch, callback, output = 'build') ->
     callback = watch
     watch = false
   
-  options = ['-c', '-b']
+  #options = ['-c', '-b']
+  options = ['-c']
   options.push("--map")
   options.push("-o")
   options.push output
