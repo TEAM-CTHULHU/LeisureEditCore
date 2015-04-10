@@ -355,8 +355,7 @@ Events:
                 pos += bl.text.length
               else return
             else blocks.push block
-            @editBlocks blocks, pos, 1, '', false
-        else setTimeout (->alert 'Selection not supported yet'), 1
+            @editBlocks blocks, pos, 1, ''
 
 editBlocks: at this point, just place the cursor after the newContent, later
 on it can select if start and end are different
@@ -1033,6 +1032,15 @@ adapted from Vega on [StackOverflow](http://stackoverflow.com/a/13127566/1026782
       result.pos = p ? pos
       result
 
+    replacements =
+      '<': "&lt;"
+      '>': "&gt;"
+      '&': "&amp;"
+
+    escapeHtml = (str)->
+      if typeof str == 'string' then str.replace /[<>&]/g, (c)-> replacements[c]
+      else str
+
 Exports
 =======
 
@@ -1046,5 +1054,6 @@ Exports
     root.link = link
     root.blockText = blockText
     root.posFor = posFor
+    root.escapeHtml = escapeHtml
 
     if window? then window.LeisureEditCore = root else module.exports = root

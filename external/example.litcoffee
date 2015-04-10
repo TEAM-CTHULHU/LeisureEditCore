@@ -18,6 +18,7 @@ it in the editing options and options delegate it to the store.
       DataStoreEditingOptions
       blockText
       posFor
+      escapeHtml
     } = LeisureEditCore = window.LeisureEditCore
 
     orgEditing = null
@@ -245,10 +246,6 @@ RenderingComputer: at this point, brute-force recompute old links
     contentSpan = (str, type)->
       str = escapeHtml str
       if str then "<span#{if type then " data-org-type='#{escapeAttr type}'" else ''}>#{str}</span>" else ''
-
-    escapeHtml = (str)->
-      if typeof str == 'string' then str.replace /[<>&]/g, (c)-> replacements[c]
-      else str
 
     escapeAttr = (str)->
       if typeof str == 'string' then str.replace /['"&]/g, (c)->

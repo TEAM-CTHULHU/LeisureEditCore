@@ -6,7 +6,7 @@
 
   ref = window.Org, parseOrgMode = ref.parseOrgMode, orgDoc = ref.orgDoc, Source = ref.Source, Results = ref.Results, Headline = ref.Headline, SimpleMarkup = ref.SimpleMarkup, Fragment = ref.Fragment;
 
-  ref1 = LeisureEditCore = window.LeisureEditCore, last = ref1.last, DataStore = ref1.DataStore, DataStoreEditingOptions = ref1.DataStoreEditingOptions, blockText = ref1.blockText, posFor = ref1.posFor;
+  ref1 = LeisureEditCore = window.LeisureEditCore, last = ref1.last, DataStore = ref1.DataStore, DataStoreEditingOptions = ref1.DataStoreEditingOptions, blockText = ref1.blockText, posFor = ref1.posFor, escapeHtml = ref1.escapeHtml;
 
   orgEditing = null;
 
@@ -475,16 +475,6 @@
       return "<span" + (type ? " data-org-type='" + (escapeAttr(type)) + "'" : '') + ">" + str + "</span>";
     } else {
       return '';
-    }
-  };
-
-  escapeHtml = function(str) {
-    if (typeof str === 'string') {
-      return str.replace(/[<>&]/g, function(c) {
-        return replacements[c];
-      });
-    } else {
-      return str;
     }
   };
 
