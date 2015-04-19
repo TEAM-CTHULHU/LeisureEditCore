@@ -33,6 +33,8 @@ When the user makes a change, the editor:
 3. rerenders the corrsponding DOM
 4. replaces the new DOM into the page
 
+Of course the editor supports [custom key bindings](#defaultBindings).
+
 Using/Installing LeisureEditCore
 ================================
 Make sure your webpage loads the javascript files in the `build` directory.  Follow
@@ -162,6 +164,12 @@ Here is the code for [LeisureEditCore](https://github.com/TEAM-CTHULHU/LeisureEd
     specialKeys[PAGEDOWN] = 'PAGEDOWN'
     specialKeys[HOME] = 'HOME'
     specialKeys[END] = 'END'
+
+Key funcs
+---------
+
+Basic functions used by [defaultBindings](#defaultBindings)
+
     keyFuncs =
       backwardChar: (editor, e, r)->
         e.preventDefault()
@@ -179,6 +187,14 @@ Here is the code for [LeisureEditCore](https://github.com/TEAM-CTHULHU/LeisureEd
         e.preventDefault()
         editor.moveSelectionDown r
         false
+
+<a name="defaultBindings"></a>Default key bindings
+--------------------------------------------------
+
+These are the default bindings.  You can set the editor's bindings
+property to this or your own object (which can inherit from this, of
+course.)
+
     defaultBindings =
       #'C-S': keyFuncs.save
       'C-Z': -> alert 'UNDO not supported yet'
@@ -235,12 +251,7 @@ Events:
         @ignoreModCheck = 0
         @movementGoal = null
         @options.setEditor this
-      getCopy: (id)->
-        if old = @options.getBlock id
-          bl = {}
-          for k,v of old
-            bl[k] = v
-          bl
+      getCopy: (id)-> copy @options.getBlock id
       domCursor: (node, pos)->
         if node instanceof jQuery
           node = node[0]
@@ -363,9 +374,10 @@ on it can select if start and end are different
         caret = start + newContent.length
         oldText = blockText blocks
         newText = oldText.substring(0, start) + newContent + oldText.substring start + length
-        {oldBlocks, newBlocks, offset} = @changeStructure blocks, newText
+        {oldBlocks, newBlocks, offset, prev} = @changeStructure blocks, newText
         if oldBlocks.length || newBlocks.length
-          @options.edit oldBlocks, newBlocks
+          oldFirst = oldBlocks[0]?._id
+          @options.edit prev, oldBlocks, newBlocks
           if !newBlocks.length
             offset = 0
             if !(startBlock = @options.getBlock @options.getBlock(oldBlocks[0].prev).next)
@@ -373,6 +385,7 @@ on it can select if start and end are different
           else
             startBlock = newBlocks[0]
             offset += start
+            if oldFirst != oldBlocks[0]?._id then offset += oldBlocks[0].text.length
             while offset < 0
               if !(block = @options.getBlock startBlock.prev)
                 offset = 0
@@ -398,6 +411,7 @@ on it can select if start and end are different
 `changeStructure(oldBlocks, newText)`: Compute blocks affected by transforming oldBlocks into newText
 
       changeStructure: (oldBlocks, newText)->
+        prev = oldBlocks[0].prev
         oldBlocks = oldBlocks.slice()
         oldText = null
         offset = 0
@@ -415,12 +429,13 @@ on it can select if start and end are different
             break
         while oldBlocks.length && newBlocks.length && oldBlocks[0].text == newBlocks[0].text
           offset -= oldBlocks[0].text.length
+          prev = oldBlocks[0]._id
           oldBlocks.shift()
           newBlocks.shift()
         while oldBlocks.length && newBlocks.length && last(oldBlocks).text == last(newBlocks).text
           oldBlocks.pop()
           newBlocks.pop()
-        oldBlocks: oldBlocks, newBlocks: newBlocks, offset: offset
+        oldBlocks: oldBlocks, newBlocks: newBlocks, offset: offset, prev: prev
       bind: ->
         @bindDragAndDrop()
         @bindClipboard()
@@ -663,9 +678,9 @@ Hook methods (required)
 
       renderBlock: (block)-> throw new Error "options.renderBlock(block) is not implemented"
 
-`edit(oldBlocks, newBlocks)`: The editor calls this after the user has attempted an edit.  It should make the requested change (probably by calling `replaceBlocks`, below) and rerender the appropriate DOM.
+`edit(prev, oldBlocks, newBlocks)`: The editor calls this after the user has attempted an edit.  It should make the requested change (probably by calling `replaceBlocks`, below) and rerender the appropriate DOM.
 
-      edit: (oldBlocks, newBlocks)-> throw new Error "options.edit(func) is not implemented"
+      edit: (prev, oldBlocks, newBlocks)-> throw new Error "options.edit(func) is not implemented"
 
 Hook methods (optional)
 -----------------------
@@ -723,14 +738,14 @@ Main code
 
 `replaceBlocks(oldBlocks, newBlocks) -> removedBlocks`: override this if you need to link up the blocks, etc., like so that `renderBlock()` can return the proper next id, for instance.
 
-      replaceBlocks: (oldBlocks, newBlocks)-> @change @changesFor oldBlocks, newBlocks
+      replaceBlocks: (prev, oldBlocks, newBlocks)-> @change @changesFor prev, oldBlocks, newBlocks
 
-      changesFor: (oldBlocks, newBlocks)->
+      changesFor: (first, oldBlocks, newBlocks)->
         newBlockMap = {}
         removes = {}
         changes = {removes, sets: newBlockMap, first: @getFirst(), oldBlocks, newBlocks}
         prev = @computeRemovesAndNewBlockIds oldBlocks, newBlocks, newBlockMap, removes
-        @patchNewBlocks oldBlocks, newBlocks, changes, newBlockMap, removes, prev
+        @patchNewBlocks first, oldBlocks, newBlocks, changes, newBlockMap, removes, prev
         @removeDuplicateChanges newBlockMap
         changes
 
@@ -749,16 +764,31 @@ Main code
           prev = newBlockMap[newBlock._id] = newBlock
         prev
 
-      patchNewBlocks: (oldBlocks, newBlocks, changes, newBlockMap, removes, prev)->
-        if oldBlocks.length != newBlocks.length
-          if !prev && prev = @copyBlock @getBlock oldBlocks[0].prev
+      patchNewBlocks: (first, oldBlocks, newBlocks, changes, newBlockMap, removes, prev)->
+        if !oldBlocks.length && first = @getBlock first
+          oldNext = @getBlock first.next
+          oldBlocks.unshift first
+          first = newBlockMap[first._id] = @copyBlock first
+          link first, newBlocks[0]
+          newBlocks.unshift first
+          if oldNext
+            oldBlocks.push oldNext
+            oldNext = newBlockMap[oldNext._id] = @copyBlock oldNext
+            link last(newBlocks), oldNext
+            newBlocks.push oldNext
+        else if oldBlocks.length != newBlocks.length
+          if !prev && prev = @copyBlock oldPrev = @getBlock oldBlocks[0].prev
+            oldBlocks.unshift oldPrev
+            newBlocks.unshift prev
             newBlockMap[prev._id] = prev
           lastBlock = last oldBlocks
-          if next = @copyBlock @getBlock (if lastBlock then lastBlock.next else @getFirst())
+          if next = @copyBlock oldNext = @getBlock (if lastBlock then lastBlock.next else @getFirst())
+            oldBlocks.push oldNext
+            newBlocks.push next
             newBlockMap[next._id] = next
             if !(next.prev = prev?._id) then changes.first = next._id
           if prev
-            if !oldBlocks.length || !@getFirst() || removes[@getFirst()]
+            if !first && (!oldBlocks.length || !@getFirst() || removes[@getFirst()])
               changes.first = newBlocks[0]._id
             prev.next = next?._id
 
@@ -862,9 +892,7 @@ Events:
         super()
         @blocks = {}
       getBlock: (id)-> @blocks[id]
-      load: (changes)->
-        @change changes
-        @trigger 'load'
+      load: (@first, @blocks)-> @trigger 'load'
       check: ->
         seen = {}
         next = @first
@@ -915,7 +943,9 @@ Events:
             updates[id] = true
           else adds[id] = block
           @blocks[id] = block
-        @check()
+        try
+          @check()
+        catch err
         result
 
 DataStoreEditingOptions
@@ -926,9 +956,17 @@ DataStoreEditingOptions
         super()
         @data.on 'change', (changes)=> @changed changes
       load: (text)->
-        @data.load @changesFor @blockList(), @parseBlocks text
+        blockMap = {}
+        newBlocks = @parseBlocks text
+        for block, i in newBlocks
+          block._id = @newId()
+          blockMap[block._id] = block
+          if prev = newBlocks[i - 1]
+            prev.next = block._id
+            block.prev = prev._id
+        @data.load newBlocks[0]?._id, blockMap
         @trigger 'load'
-      edit: (oldBlocks, newBlocks)-> @replaceBlocks oldBlocks, newBlocks
+      edit: (prev, oldBlocks, newBlocks)-> @replaceBlocks prev, oldBlocks, newBlocks
       getBlock: (id)-> @data.getBlock id
       getFirst: (first)-> @data.first
       change: (changes)-> @data.change changes
@@ -1040,6 +1078,13 @@ adapted from Vega on [StackOverflow](http://stackoverflow.com/a/13127566/1026782
       if typeof str == 'string' then str.replace /[<>&]/g, (c)-> replacements[c]
       else str
 
+    copy = (obj)->
+      if obj
+        bl = {}
+        for k,v of obj
+          bl[k] = v
+        bl
+
 Exports
 =======
 
@@ -1054,5 +1099,6 @@ Exports
     root.blockText = blockText
     root.posFor = posFor
     root.escapeHtml = escapeHtml
+    root.copy = copy
 
     if window? then window.LeisureEditCore = root else module.exports = root

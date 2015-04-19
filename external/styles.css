@@ -90,3 +90,6 @@ body {
     -moz-column-count: 2;
     -webkit-column-count: 2;
 }
+.err {
+    color: red;
+}
