@@ -625,7 +625,7 @@ on it can select if start and end are different
         if !(@prevKeybinding in [keyFuncs.nextLine, keyFuncs.previousLine])
           @movementGoal = @options.blockColumn pos
           line = 0
-        else line = (if pos.pos == 0 && pos.node == @firstText() then 1 else 0)
+        else line = (if pos.pos == 0 && pos.node == @firstText() && @options.blockColumn(pos) < @movementGoal then 1 else 0)
         lineTop = posFor(linePos).top
         while !(pos = @moveForward()).isEmpty()
           p = posFor(pos)

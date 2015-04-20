@@ -44,42 +44,6 @@
       }
     };
 
-    OrgData.prototype.makeChange = function(changes) {
-      OrgData.__super__.makeChange.call(this, changes);
-      return linkAllSiblings(this.first, this.blocks);
-    };
-
-    OrgData.prototype.mergeChain = function(chain, id, prev, next) {
-      chain.add(id, {
-        prev: prev,
-        next: next
-      });
-      chain.merge(prev, id, function(s1, s2) {
-        return {
-          prev: s1.prev,
-          next: s2.next
-        };
-      });
-      return chain.merge(id, next, function(s1, s2) {
-        return {
-          prev: s1.prev,
-          next: s2.next
-        };
-      });
-    };
-
-    OrgData.prototype.verifyMerge = function(label, merges) {
-      var id, ref2, value;
-      ref2 = merges.elements;
-      for (id in ref2) {
-        value = ref2[id];
-        if (typeof value === 'object') {
-          console.log(label + ": [ " + value.prev + " -> " + value.next + " ]");
-        }
-      }
-      return null;
-    };
-
     OrgData.prototype.nextSibling = function(thing) {
       return this.getBlock(this.getBlock(thing).nextSibling);
     };
@@ -131,6 +95,119 @@
         child = this.nextSibling(child);
       }
       return c;
+    };
+
+    OrgData.prototype.makeChange = function(changes) {
+      OrgData.__super__.makeChange.call(this, changes);
+      return linkAllSiblings(this.first, this.blocks);
+    };
+
+    OrgData.prototype.newMakeChange = function(changes) {
+      var block, blockId, j, k, len, len1, oldBlock, ref2, ref3;
+      changes.stumps = [];
+      changes.backStumps = [];
+      changes.lastChildren = {};
+      changes.parents = {};
+      ref2 = changes.newBlocks;
+      for (j = 0, len = ref2.length; j < len; j++) {
+        block = ref2[j];
+        this.spliceBack(block, changes);
+      }
+      while (block = this.getChanged(changes.stumps.pop(), changes)) {
+        this.spliceBack(block, changes);
+      }
+      ref3 = changes.backStumps;
+      for (k = 0, len1 = ref3.length; k < len1; k++) {
+        blockId = ref3[k];
+        oldBlock = this.getBlock(blockId);
+        block = this.getChanged(blockId, changes);
+        if (oldBlock.nextSibling === block.nextSibling) {
+          this.spliceForward(block, changes);
+        }
+      }
+      return changes;
+    };
+
+    OrgData.prototype.spliceBack = function(block, changes) {
+      var isSibling, nextId, oldSibling, prev;
+      if (oldSibling = this.getBlock(block._id).previousSibling) {
+        changes.backStumps.unshift(oldSibling);
+      }
+      prev = this.getChanged(block.prev, changes);
+      while (prev) {
+        if ((isSibling = siblings(prev, block)) || parent(prev, block)) {
+          if (block.previousSibling !== (isSibling ? prev._id : void 0)) {
+            if (prev.nextSibling !== (nextId = isSibling ? block._id : void 0)) {
+              if (!changes.sets[prev._id]) {
+                prev = this.changeBlock(prev, changes);
+              }
+              if (prev.nextSibling) {
+                changes.stumps.push(prev.nextSibling);
+              }
+              prev.nextSibling = nextId;
+            }
+            block.previousSibling = isSibling ? prev._id : void 0;
+          }
+          return;
+        }
+        prev = this.getChangedParent(prev, changes);
+      }
+    };
+
+    OrgData.prototype.spliceForward = function(block, changes) {
+      var curPar, next, parentStack, prev;
+      parentStack = [];
+      prev = next = block;
+      while (next) {
+        if (curPar = last(parentStack)) {
+          if (parent(curPar, next)) {
+            changed.lastChildren[curParent._id] = next._id;
+            next = this.getChanged(next.next, changes);
+          } else {
+            parentStack.pop();
+          }
+        } else if (parent(prev, next)) {
+          parentStack.push(prev);
+          prev = this.getChanged(changed.lastChildren[prev._id] || next, changes);
+          next = this.getChanged(prev.next, changes);
+        } else if (parent(next, prev)) {
+          next = null;
+        } else {
+          break;
+        }
+      }
+      if (block.nextSibling !== (next != null ? next._id : void 0)) {
+        this.changeBlock(block, changes).nextSibling = next != null ? next._id : void 0;
+      }
+      return block;
+    };
+
+    OrgData.prototype.getChanged = function(id, changes) {
+      return id && (changes.sets[id] || this.getBlock(id));
+    };
+
+    OrgData.prototype.changeBlock = function(block, changes) {
+      return changes.sets[block._id] || (changes.sets[block._id] = copy(block));
+    };
+
+    OrgData.prototype.getChangedParent = function(block, changes) {
+      var first, found, id, j, len, parent, prev;
+      if (parent = changes.parents[block._id]) {
+        return this.getChanged(parent._id, changes);
+      }
+      found = [];
+      first = block;
+      while (block) {
+        found.push(block._id);
+        prev = block;
+        block = this.getChanged(block.previousSibling, changes);
+      }
+      for (j = 0, len = found.length; j < len; j++) {
+        id = found[j];
+        changes.parents[id] = prev._id;
+      }
+      changes.lastChildren[prev._id] = first._id;
+      return prev;
     };
 
     return OrgData;
@@ -280,114 +357,6 @@
           return _this.updateStatus("No selection");
         };
       })(this));
-    };
-
-    OrgEditing.prototype.newChangesFor = function(first, oldBlocks, newBlocks) {
-      var block, blockId, changes, j, k, len, len1, oldBlock, ref2;
-      changes = OrgEditing.__super__.newChangesFor.call(this, first, oldBlocks, newBlocks);
-      changes.stumps = [];
-      changes.backStumps = [];
-      changes.lastChildren = {};
-      changes.parents = {};
-      for (j = 0, len = newBlocks.length; j < len; j++) {
-        block = newBlocks[j];
-        this.spliceBack(block, changes);
-      }
-      while (block = this.getChanged(changes.stumps.pop(), changes)) {
-        this.spliceBack(block, changes);
-      }
-      ref2 = changes.backStumps;
-      for (k = 0, len1 = ref2.length; k < len1; k++) {
-        blockId = ref2[k];
-        oldBlock = this.getBlock(blockId);
-        block = this.getChanged(blockId, changes);
-        if (oldBlock.nextSibling === block.nextSibling) {
-          this.spliceForward(block, changes);
-        }
-      }
-      return changes;
-    };
-
-    OrgEditing.prototype.spliceBack = function(block, changes) {
-      var isSibling, nextId, oldSibling, prev;
-      if (oldSibling = this.getBlock(block._id).previousSibling) {
-        changes.backStumps.unshift(oldSibling);
-      }
-      prev = this.getChanged(block.prev, changes);
-      while (prev) {
-        if ((isSibling = siblings(prev, block)) || parent(prev, block)) {
-          if (block.previousSibling !== (isSibling ? prev._id : void 0)) {
-            if (prev.nextSibling !== (nextId = isSibling ? block._id : void 0)) {
-              if (!changes.sets[prev._id]) {
-                prev = this.changeBlock(prev, changes);
-              }
-              if (prev.nextSibling) {
-                changes.stumps.push(prev.nextSibling);
-              }
-              prev.nextSibling = nextId;
-            }
-            block.previousSibling = isSibling ? prev._id : void 0;
-          }
-          return;
-        }
-        prev = this.getChangedParent(prev, changes);
-      }
-    };
-
-    OrgEditing.prototype.spliceForward = function(block, changes) {
-      var curPar, next, parentStack, prev;
-      parentStack = [];
-      prev = next = block;
-      while (next) {
-        if (curPar = last(parentStack)) {
-          if (parent(curPar, next)) {
-            changed.lastChildren[curParent._id] = next._id;
-            next = this.getChanged(next.next, changes);
-          } else {
-            parentStack.pop();
-          }
-        } else if (parent(prev, next)) {
-          parentStack.push(prev);
-          prev = this.getChanged(changed.lastChildren[prev._id] || next, changes);
-          next = this.getChanged(prev.next, changes);
-        } else if (parent(next, prev)) {
-          next = null;
-        } else {
-          break;
-        }
-      }
-      if (block.nextSibling !== (next != null ? next._id : void 0)) {
-        this.changeBlock(block, changes).nextSibling = next != null ? next._id : void 0;
-      }
-      return block;
-    };
-
-    OrgEditing.prototype.getChanged = function(id, changes) {
-      return id && (changes.sets[id] || this.getBlock(id));
-    };
-
-    OrgEditing.prototype.changeBlock = function(block, changes) {
-      return changes.sets[block._id] || (changes.sets[block._id] = copy(block));
-    };
-
-    OrgEditing.prototype.getChangedParent = function(block, changes) {
-      var first, found, id, j, len, parent, prev;
-      if (parent = changes.parents[block._id]) {
-        return this.getChanged(parent._id, changes);
-      }
-      found = [];
-      first = block;
-      while (block) {
-        found.push(block._id);
-        prev = block;
-        block = this.getChanged(block.previousSibling, changes);
-      }
-      for (j = 0, len = found.length; j < len; j++) {
-        id = found[j];
-        changes.parents[id] = prev._id;
-      }
-      changes.lastChildren[prev._id] = first._id;
-      return prev;
     };
 
     return OrgEditing;

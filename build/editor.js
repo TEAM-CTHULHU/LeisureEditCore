@@ -820,7 +820,7 @@
         this.movementGoal = this.options.blockColumn(pos);
         line = 0;
       } else {
-        line = (pos.pos === 0 && pos.node === this.firstText() ? 1 : 0);
+        line = (pos.pos === 0 && pos.node === this.firstText() && this.options.blockColumn(pos) < this.movementGoal ? 1 : 0);
       }
       lineTop = posFor(linePos).top;
       while (!(pos = this.moveForward()).isEmpty()) {
