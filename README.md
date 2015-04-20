@@ -398,15 +398,18 @@ on it can select if start and end are different
                 break
               offset -= startBlock.text.length
               startBlock = block
-          startPos = @domCursor @options.nodeForId(startBlock._id), 0
-          if select
-            r = document.createRange()
-            startPos = startPos.forwardChars offset, true
-            r.setStart startPos.node, startPos.pos
-            endPos = startPos.forwardChars newContent.length, true
-            r.setEnd endPos.node, endPos.pos
-            selectRange r
-          else startPos.forwardChars(offset + newContent.length, true).moveCaret()
+        else
+          startBlock = blocks[0]
+          offset = start
+        startPos = @domCursor @options.nodeForId(startBlock._id), 0
+        if select
+          r = document.createRange()
+          startPos = startPos.forwardChars offset, true
+          r.setStart startPos.node, startPos.pos
+          endPos = startPos.forwardChars newContent.length, true
+          r.setEnd endPos.node, endPos.pos
+          selectRange r
+        else startPos.forwardChars(offset + newContent.length, true).moveCaret()
 
 `changeStructure(oldBlocks, newText)`: Compute blocks affected by transforming oldBlocks into newText
 

@@ -406,17 +406,20 @@
             startBlock = block;
           }
         }
-        startPos = this.domCursor(this.options.nodeForId(startBlock._id), 0);
-        if (select) {
-          r = document.createRange();
-          startPos = startPos.forwardChars(offset, true);
-          r.setStart(startPos.node, startPos.pos);
-          endPos = startPos.forwardChars(newContent.length, true);
-          r.setEnd(endPos.node, endPos.pos);
-          return selectRange(r);
-        } else {
-          return startPos.forwardChars(offset + newContent.length, true).moveCaret();
-        }
+      } else {
+        startBlock = blocks[0];
+        offset = start;
+      }
+      startPos = this.domCursor(this.options.nodeForId(startBlock._id), 0);
+      if (select) {
+        r = document.createRange();
+        startPos = startPos.forwardChars(offset, true);
+        r.setStart(startPos.node, startPos.pos);
+        endPos = startPos.forwardChars(newContent.length, true);
+        r.setEnd(endPos.node, endPos.pos);
+        return selectRange(r);
+      } else {
+        return startPos.forwardChars(offset + newContent.length, true).moveCaret();
       }
     };
 
