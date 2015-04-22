@@ -20,6 +20,7 @@ it in the editing options and options delegate it to the store.
       posFor
       escapeHtml
       copy
+      setHtml
     } = LeisureEditCore = window.LeisureEditCore
 
     orgEditing = null
@@ -29,7 +30,7 @@ it in the editing options and options delegate it to the store.
     class OrgData extends DataStore
       getBlock: (thing)-> if typeof thing == 'string' then super thing else thing
       load: (first, blocks)->
-        if first then linkAllSiblings first, blocks
+        if first then linkAllSiblings first, blocks, sets: {}
         super first, blocks
       parseBlocks: (text)->
         if text == '' then []
@@ -63,7 +64,13 @@ makeChange({removes, sets, first, oldBlocks, newBlocks}): at this point, brute-f
 
       makeChange: (changes)->
         super changes
-        linkAllSiblings @first, @blocks
+        linkAllSiblings @first, @blocks, changes
+        #@newMakeChange changes
+        changes
+
+newMakeChanges limits the computation needed to patch the links but it's not working
+yet, so it's disabled.
+
       newMakeChange: (changes)->
         changes.stumps = []
         changes.backStumps = []
@@ -159,32 +166,40 @@ and returns an object representing the new set
           @elements[s2] = mergeFunc @elements[s1], @elements[s2]
           @elements[s1] = s2
 
-    linkAllSiblings = (first, blocks)->
+    linkAllSiblings = (first, blocks, changes)->
+      change = (block)-> changes.sets[block._id] = block
       parentStack = ['TOP']
-      siblingStack = [[]]
+      siblingStack = [null]
+      emptyNexts = {}
       cur = blocks[first]
       while cur
-        delete cur.nextSibling
-        delete cur.previousSibling
+        if cur.nextSibling then emptyNexts[cur._id] = cur
         curParent = blocks[last parentStack]
         if cur.type == 'headline'
           while curParent && cur.level <= curParent.level
             parentStack.pop()
             siblingStack.pop()
             curParent = blocks[last parentStack]
-        if previousSibling = last(last(siblingStack))
-          blocks[previousSibling].nextSibling = cur._id
-          blocks[cur._id].previousSibling = previousSibling
-        last(siblingStack).push cur._id
+        if previousSibling = last siblingStack
+          delete emptyNexts[previousSibling]
+          if (prev = blocks[previousSibling]).nextSibling != cur._id
+            change(prev).nextSibling = cur._id
+          if cur.previousSibling != previousSibling
+            change(cur).previousSibling = previousSibling
+        else if cur.previousSibling
+          delete change(cur).previousSibling
+        siblingStack[siblingStack.length - 1] = cur._id
         if cur.type == 'headline'
           parentStack.push cur._id
-          siblingStack.push []
+          siblingStack.push null
         cur = blocks[cur.next]
+      for id, block of emptyNexts
+        delete change(block).nextSibling
 
     class OrgEditing extends DataStoreEditingOptions
       constructor: (data)->
         super data
-        data.on 'load', => @editor.node.html @renderBlocks()
+        data.on 'load', => setHtml @editor.node[0], @renderBlocks()
       blockLineFor: (node, offset)->
         {block, offset} = @editor.blockOffset node, offset
         @blockLine block, offset
@@ -234,7 +249,7 @@ and returns an object representing the new set
     class FancyEditing extends OrgEditing
       changed: (changes)->
         #new RenderingComputer(changes, this).renderChanges()
-        @editor.node.html @renderBlocks()
+        setHtml @editor.node[0], @renderBlocks()
       nodeForId: (id)-> $("#fancy-#{id}")
       idForNode: (node)-> node.id.match(/^fancy-(.*)$/)?[1]
       parseBlocks: (text)-> @data.parseBlocks text

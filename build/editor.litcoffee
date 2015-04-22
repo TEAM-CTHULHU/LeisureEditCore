@@ -288,7 +288,7 @@ Events:
         s = getSelection()
         if s.type == 'None' then type: 'None'
         else
-          p = @blockOffset s.anchorNode, s.anchorOffset
+          p = @blockOffset s.getRangeAt(0)
           p.type = s.type
           p.length = @selectedText(s).length
           p
@@ -338,7 +338,8 @@ Events:
         @handleDelete event, sel, true, (text, pos)-> true
       idAtCaret: (sel)-> @options.idForNode @options.getContainer(sel.anchorNode)
       selectedText: (s)->
-        @domCursor(s.anchorNode, s.anchorOffset).getTextTo @domCursor(s.focusNode, s.focusOffset)
+        r = s.getRangeAt(0)
+        @domCursor(r.startContainer, r.startOffset).getTextTo @domCursor(r.endContainer, r.endOffset)
       cutText: (e)->
         e.preventDefault()
         sel = getSelection()
@@ -845,7 +846,7 @@ Main code
 
       load: (text)->
         @replaceBlocks @blockList(), @parseBlocks text
-        @editor.node.html @renderBlocks()
+        setHtml @editor.node[0], @renderBlocks()
         @trigger 'load'
       blockCount: ->
         c = 0
@@ -878,6 +879,35 @@ Main code
         while next && [html, next] = @renderBlock @getBlock next
           result += html
         result
+
+    activating = false
+
+Set html of an element and evaluate scripts so that document.currentScript is properly set
+
+    setHtml = (el, html)->
+      el.innerHTML = html
+      activateScripts $(el)
+
+    activateScripts = (jq)->
+      if !activating
+        activating = true
+        try
+          for script in jq.find('script')
+            text = if !script.type || script.type.toLowerCase() == 'text/javascript'
+              script.textContent
+            else if script.type.toLowerCase() == 'text/coffeescript'
+              CoffeeScript.compile script.textContent, bare: true
+            else if script.type.toLowerCase() == 'text/literate-coffeescript'
+              CoffeeScript.compile script.textContent, bare: true, literate: true
+            if text
+              newScript = document.createElement 'script'
+              newScript.type = 'text/javascript'
+              if script.src then newScript.src = script.src
+              newScript.textContent = text
+              script.parentNode.insertBefore newScript, script
+              script.parentNode.removeChild script
+        finally
+          activating = false
 
 DataStore
 =========
@@ -973,7 +1003,7 @@ DataStoreEditingOptions
       getBlock: (id)-> @data.getBlock id
       getFirst: (first)-> @data.first
       change: (changes)-> @data.change changes
-      changed: (changes)-> @editor.node.html @renderBlocks()
+      changed: (changes)-> setHtml @editor.node[0], @renderBlocks()
 
 Utilities
 =========
@@ -1103,5 +1133,7 @@ Exports
     root.posFor = posFor
     root.escapeHtml = escapeHtml
     root.copy = copy
+    root.activateScripts = activateScripts
+    root.setHtml = setHtml
 
     if window? then window.LeisureEditCore = root else module.exports = root
