@@ -119,7 +119,7 @@
   })(DataStore);
 
   greduce = function(thing, func, arg, next) {
-    if (thing && (arg == null)) {
+    if (thing && typeof arg === 'undefined') {
       arg = thing;
       thing = next(thing);
     }
@@ -363,16 +363,17 @@
     FancyEditing.prototype.updateBlock = function(block, old) {
       var child, content, html, j, len, node, ref2, results;
       if ((node = this.nodeForId(block._id)).length) {
-        if (block.type !== (old != null ? old.type : void 0) || block.nextSibling !== (old != null ? old.nextSibling : void 0) || block.previousSibling !== (old != null ? old.previousSibling : void 0)) {
+        if (block.type !== (old != null ? old.type : void 0) || block.nextSibling !== (old != null ? old.nextSibling : void 0) || block.previousSibling !== (old != null ? old.previousSibling : void 0) || block.prev !== (old != null ? old.prev : void 0)) {
           this.insertUpdateNode(block, node);
         }
-        if (block.type !== (old != null ? old.type : void 0) || block.text !== (old != null ? old.text : void 0)) {
-          if (block.type === 'headline') {
+        if (block.text !== (old != null ? old.text : void 0)) {
+          if (node.is('[data-headline]')) {
             content = node.children().filter('[data-content]');
             content.children().filter('[data-block]').insertAfter(node);
           }
           html = this.renderBlock(block, true)[0];
           node = $(setHtml(node[0], html, true));
+          content = node.children().filter('[data-content]');
           if (block.type === 'headline') {
             ref2 = this.data.children(block);
             results = [];
@@ -395,12 +396,12 @@
       var next, parentNode, prev, ref2, ref3, ref4;
       if ((ref2 = (prev = this.nodeForId(this.data.previousSibling(block)))) != null ? ref2.length : void 0) {
         return prev.after(node);
-      } else if ((ref3 = (next = this.nodeForId(this.data.nextSibling(block)))) != null ? ref3.length : void 0) {
-        return next.before(node);
-      } else if ((ref4 = (parentNode = this.nodeForId(block.prev))) != null ? ref4.is("[data-headline]") : void 0) {
-        return parentNode.children().filter("[data-content]").append(node);
       } else if (!block.prev) {
         return this.editor.node.prepend(node);
+      } else if ((ref3 = (parentNode = this.nodeForId(block.prev))) != null ? ref3.is("[data-headline]") : void 0) {
+        return parentNode.children().filter("[data-content]").append(node);
+      } else if ((ref4 = (next = this.nodeForId(this.data.nextSibling(block)))) != null ? ref4.length : void 0) {
+        return next.before(node);
       } else {
         return this.editor.node.append(node);
       }

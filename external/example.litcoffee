@@ -53,7 +53,7 @@ it in the editing options and options delegate it to the store.
         @reduceNextSiblings @firstChild(thing), ((x, y)-> c.push y), null
         c
 
-makeChange({removes, sets, first, oldBlocks, newBlocks}): at this point, brute-force recompute all links
+makeChange({removes, sets, first, oldBlocks, newBlocks}): at this point, brute-force recompute all links.  This does compute the minimal block changes, but linkAllSiblings traverses all of the blocks to do it.  Needs to do less work to handle a massive amount of nodes.
 
       makeChange: (changes)->
         changes = super changes
@@ -61,7 +61,7 @@ makeChange({removes, sets, first, oldBlocks, newBlocks}): at this point, brute-f
         changes
 
     greduce = (thing, func, arg, next)->
-      if thing && !arg?
+      if thing && typeof arg == 'undefined'
         arg = thing
         thing = next thing
       while thing
@@ -174,14 +174,15 @@ makeChange({removes, sets, first, oldBlocks, newBlocks}): at this point, brute-f
           node.remove()
       updateBlock: (block, old)->
         if (node = @nodeForId block._id).length
-          if block.type != old?.type || block.nextSibling != old?.nextSibling || block.previousSibling != old?.previousSibling
+          if block.type != old?.type || block.nextSibling != old?.nextSibling || block.previousSibling != old?.previousSibling || block.prev != old?.prev
             @insertUpdateNode block, node
-          if block.type != old?.type || block.text != old?.text
-            if block.type == 'headline'
+          if block.text != old?.text
+            if node.is '[data-headline]'
               content = node.children().filter('[data-content]')
               content.children().filter('[data-block]').insertAfter(node)
             [html] = @renderBlock block, true
             node = $(setHtml node[0], html, true)
+            content = node.children().filter('[data-content]')
             if block.type == 'headline'
               for child in @data.children block
                 content.append @nodeForId child._id
@@ -192,10 +193,10 @@ makeChange({removes, sets, first, oldBlocks, newBlocks}): at this point, brute-f
           setHtml node[0], html, true
       insertUpdateNode: (block, node)->
         if (prev = @nodeForId @data.previousSibling block)?.length then prev.after node
-        else if (next = @nodeForId @data.nextSibling block)?.length then next.before node
+        else if !block.prev then @editor.node.prepend(node)
         else if (parentNode = @nodeForId(block.prev))?.is("[data-headline]")
           parentNode.children().filter("[data-content]").append node
-        else if !block.prev then @editor.node.prepend(node)
+        else if (next = @nodeForId @data.nextSibling block)?.length then next.before node
         else @editor.node.append(node)
       renderBlock: (block, skipChildren)->
         html = if block.type == 'headline'

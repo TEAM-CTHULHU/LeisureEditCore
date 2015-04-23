@@ -274,8 +274,8 @@
       blocks = [br.block];
       endOffset = br.offset;
       if (br.type === 'Range') {
-        tot = br.length - br.offset;
         cur = br.block;
+        tot = br.length - br.offset - cur.text.length;
         while (tot > 0) {
           blocks.push(cur = this.options.getBlock(cur.next));
           tot -= cur.text.length;
@@ -450,6 +450,9 @@
         if ((!prev || prev.text === newBlocks[0].text) && (!next || next.text === last(newBlocks).text)) {
           break;
         }
+      }
+      if (!newBlocks) {
+        newBlocks = this.options.parseBlocks(newText);
       }
       while (oldBlocks.length && newBlocks.length && oldBlocks[0].text === newBlocks[0].text) {
         offset -= oldBlocks[0].text.length;

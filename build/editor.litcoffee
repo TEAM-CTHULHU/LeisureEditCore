@@ -320,8 +320,8 @@ Events:
         blocks = [br.block]
         endOffset = br.offset
         if br.type == 'Range'
-          tot = br.length - br.offset
           cur = br.block
+          tot = br.length - br.offset - cur.text.length
           while tot > 0
             blocks.push cur = @options.getBlock cur.next
             tot -= cur.text.length
@@ -432,6 +432,7 @@ on it can select if start and end are different
           newBlocks = @options.parseBlocks newText
           if (!prev || prev.text == newBlocks[0].text) && (!next || next.text == last(newBlocks).text)
             break
+        if !newBlocks then newBlocks = @options.parseBlocks newText
         while oldBlocks.length && newBlocks.length && oldBlocks[0].text == newBlocks[0].text
           offset -= oldBlocks[0].text.length
           prev = oldBlocks[0]._id
