@@ -30,23 +30,19 @@ it in the editing options and options delegate it to the store.
     class OrgData extends DataStore
       getBlock: (thing)-> if typeof thing == 'string' then super thing else thing
       load: (first, blocks)->
-        if first then linkAllSiblings first, blocks, sets: {}
+        if first then linkAllSiblings first, blocks, sets: {}, old: {}
         super first, blocks
       parseBlocks: (text)->
         if text == '' then []
         else orgDoc parseOrgMode text.replace /\r\n/g, '\n'
       nextSibling: (thing)-> @getBlock @getBlock(thing).nextSibling
       previousSibling: (thing)-> @getBlock @getBlock(thing).previousSibling
-      firstSibling: (thing)->
-        id = getId thing
-        while id && p = @getBlock(id)?.previousSibling
-          id = p
-        @getBlock id
-      lastSibling: (thing)->
-        id = @getBlock thing
-        while id && c = @getBlock(id).nextSibling
-          id = c
-        @getBlock id
+      reducePreviousSiblings: (thing, func, arg)->
+        greduce @getBlock(thing), func, arg, (b)=> @getBlock b.previousSibling
+      reduceNextSiblings: (thing, func, arg)->
+        greduce @getBlock(thing), func, arg, (b)=> @getBlock b.nextSibling
+      lastSibling: (thing)-> @reduceNextSiblings thing, ((x, y)-> y), null
+      firstSibling: (thing)-> @reducePreviousSiblings thing, ((x, y)-> y), null
       parent: (thing)-> @getBlock @firstSibling(thing)?.prev
       firstChild: (thing)->
         if (block = @getBlock thing) && (n = @getBlock block.next) && !n.previousSibling
@@ -54,120 +50,31 @@ it in the editing options and options delegate it to the store.
       lastChild: (thing)-> @lastSibling @firstChild thing
       children: (thing)->
         c = []
-        child = @firstChild thing
-        while child
-          c.push child
-          child = @nextSibling child
+        @reduceNextSiblings @firstChild(thing), ((x, y)-> c.push y), null
         c
 
 makeChange({removes, sets, first, oldBlocks, newBlocks}): at this point, brute-force recompute all links
 
       makeChange: (changes)->
-        super changes
+        changes = super changes
         linkAllSiblings @first, @blocks, changes
-        #@newMakeChange changes
         changes
 
-newMakeChanges limits the computation needed to patch the links but it's not working
-yet, so it's disabled.
-
-      newMakeChange: (changes)->
-        changes.stumps = []
-        changes.backStumps = []
-        changes.lastChildren = {}
-        changes.parents = {}
-        for block in changes.newBlocks
-          @spliceBack block, changes
-        while block = @getChanged changes.stumps.pop(), changes
-          @spliceBack block, changes
-        for blockId in changes.backStumps
-          oldBlock = @getBlock blockId
-          block = @getChanged blockId, changes
-          if oldBlock.nextSibling == block.nextSibling then @spliceForward block, changes
-        changes
-
-SpliceBack requires correct previousSibling links before block.
-
-      spliceBack: (block, changes)->
-        if oldSibling = @getBlock(block._id).previousSibling
-          changes.backStumps.unshift oldSibling
-        prev = @getChanged block.prev, changes
-        while prev
-          if (isSibling = siblings(prev, block)) || parent(prev, block)
-            if block.previousSibling != (if isSibling then prev._id)
-              if prev.nextSibling != (nextId = if isSibling then block._id)
-                if !changes.sets[prev._id]
-                  prev = @changeBlock prev, changes
-                if prev.nextSibling then changes.stumps.push prev.nextSibling
-                prev.nextSibling = nextId
-              block.previousSibling = if isSibling then prev._id
-            return
-          prev = @getChangedParent prev, changes
-
-SpliceForward searches forward for the true next sibling of a block in a 
-
-      spliceForward: (block, changes)->
-        parentStack = []
-        prev = next = block
-        while next
-          if curPar = last parentStack
-            if parent curPar, next
-              changed.lastChildren[curParent._id] = next._id
-              next = @getChanged next.next, changes
-            else parentStack.pop()
-          else if parent prev, next
-            parentStack.push prev
-            prev = @getChanged (changed.lastChildren[prev._id] || next), changes
-            next = @getChanged prev.next, changes
-          else if parent next, prev then next = null
-          else break
-        if block.nextSibling != next?._id
-          @changeBlock(block, changes).nextSibling = next?._id
-        block
-      getChanged: (id, changes)-> id && (changes.sets[id] || @getBlock id)
-      changeBlock: (block, changes)->
-        changes.sets[block._id] || (changes.sets[block._id] = copy block)
-      getChangedParent: (block, changes)->
-        if parent = changes.parents[block._id] then return @getChanged parent._id, changes
-        found = []
-        first = block
-        while block
-          found.push block._id
-          prev = block
-          block = @getChanged block.previousSibling, changes
-        for id in found
-          changes.parents[id] = prev._id
-        changes.lastChildren[prev._id] = first._id
-        prev
+    greduce = (thing, func, arg, next)->
+      if thing && !arg?
+        arg = thing
+        thing = next thing
+      while thing
+        arg = func arg, thing
+        thing = next thing
+      arg
 
     getId = (thing)-> if typeof thing == 'string' then thing else thing._id
 
-Merge-find set with path compression
-
-    class MFSet
-      constructor: ->
-        @elements = {} # id -> id | object
-      add: (id, setObj)-> @elements[id] = setObj
-      find: (id)->
-        if @elements[id]
-          path = []
-          while typeof (s = @elements[id]) == 'string'
-            path.push s
-          lastId = path.pop()
-          for id in path
-            @elements[id] = lastId
-          lastId
-
-`merge(id1, id2, mergeFunc(set1, set2))` mergeFunc takes the current sets
-and returns an object representing the new set
-
-      merge: (id1, id2, mergeFunc)->
-        if (s1 = @find id1) && (s2 = @find id2)
-          @elements[s2] = mergeFunc @elements[s1], @elements[s2]
-          @elements[s1] = s2
-
     linkAllSiblings = (first, blocks, changes)->
-      change = (block)-> changes.sets[block._id] = block
+      change = (block)->
+        if !changes.old[block._id] then changes.old[block._id] = copy block
+        changes.sets[block._id] = block
       parentStack = ['TOP']
       siblingStack = [null]
       emptyNexts = {}
@@ -248,60 +155,56 @@ and returns an object representing the new set
 
     class FancyEditing extends OrgEditing
       changed: (changes)->
-        #new RenderingComputer(changes, this).renderChanges()
-        setHtml @editor.node[0], @renderBlocks()
-      nodeForId: (id)-> $("#fancy-#{id}")
+        rendered = {}
+        for id, block of changes.removes
+          @removeBlock block
+        for block in changes.newBlocks
+          rendered[block._id] = true
+          @updateBlock block, changes.old[block._id]
+        for id, block of changes.sets
+          if !rendered[id] then @updateBlock block, changes.old[block._id]
+      nodeForId: (id)-> id && $("#fancy-#{getId id}")
       idForNode: (node)-> node.id.match(/^fancy-(.*)$/)?[1]
       parseBlocks: (text)-> @data.parseBlocks text
-      renderBlock: (block)->
+      removeBlock: (block)->
+        if (node = @nodeForId block._id).length
+          if block.type == 'headline'
+            content = node.children().filter('[data-content]')
+            content.children().filter('[data-block]').insertAfter(node)
+          node.remove()
+      updateBlock: (block, old)->
+        if (node = @nodeForId block._id).length
+          if block.type != old?.type || block.nextSibling != old?.nextSibling || block.previousSibling != old?.previousSibling
+            @insertUpdateNode block, node
+          if block.type != old?.type || block.text != old?.text
+            if block.type == 'headline'
+              content = node.children().filter('[data-content]')
+              content.children().filter('[data-block]').insertAfter(node)
+            [html] = @renderBlock block, true
+            node = $(setHtml node[0], html, true)
+            if block.type == 'headline'
+              for child in @data.children block
+                content.append @nodeForId child._id
+        else
+          node = $("<div></div>")
+          @insertUpdateNode block, node
+          [html] = @renderBlock block, true
+          setHtml node[0], html, true
+      insertUpdateNode: (block, node)->
+        if (prev = @nodeForId @data.previousSibling block)?.length then prev.after node
+        else if (next = @nodeForId @data.nextSibling block)?.length then next.before node
+        else if (parentNode = @nodeForId(block.prev))?.is("[data-headline]")
+          parentNode.children().filter("[data-content]").append node
+        else if !block.prev then @editor.node.prepend(node)
+        else @editor.node.append(node)
+      renderBlock: (block, skipChildren)->
         html = if block.type == 'headline'
-          "<div #{blockAttrs block} contenteditable='false'>#{blockLabel block}<div contenteditable='true'>#{contentSpan block.text, 'text'}#{(@renderBlock(child)[0] for child in @data.children(block) ? []).join ''}</div></div>"
+          "<div #{blockAttrs block} contenteditable='false'>#{blockLabel block}<div contenteditable='true' data-content>#{contentSpan block.text, 'text'}#{if !skipChildren then (@renderBlock(child)[0] for child in @data.children(block) ? []).join '' else ''}</div></div>"
         else if block.type == 'code'
           "<span #{blockAttrs block}>#{blockLabel block}#{escapeHtml block.text}</span>"
         else "<span #{blockAttrs block}>#{blockLabel block}#{escapeHtml block.text}</span>"
         [html, @data.nextSibling(block)?._id || !@data.firstChild(block) && block.next]
       updateStatus: (line)-> $("#orgStatus").html line
-
-RenderingComputer: at this point, brute-force recompute old links
-
-    #class RenderingComputer
-    #  constructor: (@changes, @options)->
-    #    @links = new Links @changes.oldFirst, @options.data.blocks, @changes.old
-    #    @moves = {}
-    #    changedParent = {}
-    #    
-    #    for id of @changes.updates
-    #      oldBlock = @changes.old[id]
-    #      newBlock = @options.getBlock id
-    #      if oldBlock.type == newBlock.type == 'headline'
-    #        if newBlock.level != oldBlock.level
-    #          oldChildren = {}
-    #          newChildren = {}
-    #          added = {}
-    #          removed = {}
-    #          for child in @links.getChildren oldBlock
-    #            oldChildren[child._id] = child
-    #          for child in @links.getChildren newBlock
-    #            if !oldChildren[child._id] then added[child._id] = true
-    #          for childId of oldChildren
-    #            if !newChildren[childId] then removed[childId] = true
-    #  renderChanges: -> @options.editor.node.html @options.renderBlocks()
-    #  promoteChildren: (headlineId)->
-    #    
-    #differences = (oldItems, newItems)->
-    #  oldMap = {}
-    #  newMap = {}
-    #  added = []
-    #  removed = []
-    #  for item in oldItems
-    #    oldMap[item] = true
-    #  else oldMap = oldItems
-    #  for item in newItems
-    #    newMap[item] = true
-    #    if !oldMap[item] then added.push item
-    #  for item in oldItems
-    #    if !newMap[item] then removed.push item
-    #  {added, removed}
 
     numSpan = (n)-> "<span class='status-num'>#{n}</span>"
 

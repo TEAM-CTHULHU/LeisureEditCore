@@ -315,7 +315,11 @@
     LeisureEditCore.prototype.selectedText = function(s) {
       var r;
       r = s.getRangeAt(0);
-      return this.domCursor(r.startContainer, r.startOffset).getTextTo(this.domCursor(r.endContainer, r.endOffset));
+      if (r.collapsed) {
+        return '';
+      } else {
+        return this.domCursor(r.startContainer, r.startOffset).getTextTo(this.domCursor(r.endContainer, r.endOffset));
+      }
     };
 
     LeisureEditCore.prototype.cutText = function(e) {
@@ -1163,9 +1167,19 @@
 
   activating = false;
 
-  setHtml = function(el, html) {
-    el.innerHTML = html;
-    return activateScripts($(el));
+  setHtml = function(el, html, outer) {
+    var next, par, prev, ref, ref1;
+    if (outer) {
+      prev = el.previousSibling;
+      next = el.nextSibling;
+      par = el.parentNode;
+      el.outerHTML = html;
+      el = (ref = (ref1 = prev != null ? prev.nextSibling : void 0) != null ? ref1 : next != null ? next.previousSibling : void 0) != null ? ref : par != null ? par.firstChild : void 0;
+    } else {
+      el.innerHTML = html;
+    }
+    activateScripts($(el));
+    return el;
   };
 
   activateScripts = function(jq) {
@@ -1282,23 +1296,25 @@
     };
 
     DataStore.prototype.makeChange = function(changes) {
-      var adds, bl, block, err, id, old, ref, removes, result, updates;
+      var adds, bl, block, err, id, newBlocks, old, oldBlocks, ref, removes, result, sets, updates;
       updates = {};
       adds = {};
-      removes = [];
       old = {};
+      oldBlocks = changes.oldBlocks, newBlocks = changes.newBlocks, sets = changes.sets, removes = changes.removes;
       result = {
         adds: adds,
         updates: updates,
         removes: removes,
         old: old,
+        oldBlocks: oldBlocks,
+        newBlocks: newBlocks,
+        sets: sets,
         oldFirst: this.first
       };
       this.first = changes.first;
       for (id in changes.removes) {
         if (bl = this.blocks[id]) {
           old[id] = bl;
-          removes[id] = true;
           delete this.blocks[id];
         }
       }
@@ -1307,7 +1323,7 @@
         block = ref[id];
         if (this.blocks[id]) {
           old[id] = this.blocks[id];
-          updates[id] = true;
+          updates[id] = block;
         } else {
           adds[id] = block;
         }

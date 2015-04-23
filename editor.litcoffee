@@ -339,7 +339,8 @@ Events:
       idAtCaret: (sel)-> @options.idForNode @options.getContainer(sel.anchorNode)
       selectedText: (s)->
         r = s.getRangeAt(0)
-        @domCursor(r.startContainer, r.startOffset).getTextTo @domCursor(r.endContainer, r.endOffset)
+        if r.collapsed then ''
+        else @domCursor(r.startContainer, r.startOffset).getTextTo @domCursor(r.endContainer, r.endOffset)
       cutText: (e)->
         e.preventDefault()
         sel = getSelection()
@@ -884,9 +885,16 @@ Main code
 
 Set html of an element and evaluate scripts so that document.currentScript is properly set
 
-    setHtml = (el, html)->
-      el.innerHTML = html
+    setHtml = (el, html, outer)->
+      if outer
+        prev = el.previousSibling
+        next = el.nextSibling
+        par = el.parentNode
+        el.outerHTML = html
+        el = prev?.nextSibling ? next?.previousSibling ? par?.firstChild
+      else el.innerHTML = html
       activateScripts $(el)
+      el
 
     activateScripts = (jq)->
       if !activating
@@ -961,19 +969,18 @@ Events:
       makeChange: (changes)->
         updates = {}
         adds = {}
-        removes = []
         old = {}
-        result = {adds, updates, removes, old, oldFirst: @first}
+        {oldBlocks, newBlocks, sets, removes} = changes
+        result = {adds, updates, removes, old, oldBlocks, newBlocks, sets, oldFirst: @first}
         @first = changes.first
         for id of changes.removes
           if bl = @blocks[id]
             old[id] = bl
-            removes[id] = true
             delete @blocks[id]
         for id, block of changes.sets
           if @blocks[id]
             old[id] = @blocks[id]
-            updates[id] = true
+            updates[id] = block
           else adds[id] = block
           @blocks[id] = block
         try
