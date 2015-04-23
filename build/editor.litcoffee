@@ -322,9 +322,9 @@ Events:
         if br.type == 'Range'
           cur = br.block
           tot = br.length - br.offset - cur.text.length
-          while tot > 0
+          while tot > 0 && cur
             blocks.push cur = @options.getBlock cur.next
-            tot -= cur.text.length
+            if cur then tot -= cur.text.length
         @editBlocks blocks, br.offset, br.length, (text ? getEventChar e), select
       backspace: (event, sel, r)->
         if sel.type == 'Range' then return @cutText event
@@ -474,13 +474,13 @@ on it can select if start and end are different
               oe.dataTransfer.dropEffect = 'none'
               return
             dr = dragRange
+            dragRange = null
             if insertOffset <= cutOffset
-              @replace e, dragRange, '', false
+              @replace e, dr, '', false
               @replace e, @blockRangeForOffsets(insertOffset, 0), insertText, false
             else
               insert()
-              @replace e, @blockRangeForOffsets(cutOffset, dragRange.length), '', false
-            dragRange = null
+              @replace e, @blockRangeForOffsets(cutOffset, dr.length), '', false
           else insert()
           true
         @node.on 'dragstart', (e)=>
@@ -494,12 +494,12 @@ on it can select if start and end are different
             clipboard.dropEffect = 'move'
           true
         @node[0].addEventListener 'dragend', (e)=>
-          if dragRange
+          if dr = dragRange
+            dragRange = null
             if e.dataTransfer.dropEffect == 'move'
               sel = @getSelectedBlockRange()
-              @replace e, dragRange, ''
+              @replace e, dr, ''
               @selectBlockRange sel
-            dragRange = null
       bindClipboard: ->
         @node.on 'cut', (e)=>
           e.preventDefault()

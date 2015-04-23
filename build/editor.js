@@ -276,9 +276,11 @@
       if (br.type === 'Range') {
         cur = br.block;
         tot = br.length - br.offset - cur.text.length;
-        while (tot > 0) {
+        while (tot > 0 && cur) {
           blocks.push(cur = this.options.getBlock(cur.next));
-          tot -= cur.text.length;
+          if (cur) {
+            tot -= cur.text.length;
+          }
         }
       }
       return this.editBlocks(blocks, br.offset, br.length, text != null ? text : getEventChar(e), select);
@@ -522,14 +524,14 @@
               return;
             }
             dr = dragRange;
+            dragRange = null;
             if (insertOffset <= cutOffset) {
-              _this.replace(e, dragRange, '', false);
+              _this.replace(e, dr, '', false);
               _this.replace(e, _this.blockRangeForOffsets(insertOffset, 0), insertText, false);
             } else {
               insert();
-              _this.replace(e, _this.blockRangeForOffsets(cutOffset, dragRange.length), '', false);
+              _this.replace(e, _this.blockRangeForOffsets(cutOffset, dr.length), '', false);
             }
-            dragRange = null;
           } else {
             insert();
           }
@@ -562,14 +564,14 @@
       })(this));
       return this.node[0].addEventListener('dragend', (function(_this) {
         return function(e) {
-          var sel;
-          if (dragRange) {
+          var dr, sel;
+          if (dr = dragRange) {
+            dragRange = null;
             if (e.dataTransfer.dropEffect === 'move') {
               sel = _this.getSelectedBlockRange();
-              _this.replace(e, dragRange, '');
-              _this.selectBlockRange(sel);
+              _this.replace(e, dr, '');
+              return _this.selectBlockRange(sel);
             }
-            return dragRange = null;
           }
         };
       })(this));

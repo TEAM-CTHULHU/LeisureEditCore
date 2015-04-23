@@ -174,11 +174,13 @@ makeChange({removes, sets, first, oldBlocks, newBlocks}): at this point, brute-f
           node.remove()
       updateBlock: (block, old)->
         if (node = @nodeForId block._id).length
+          content = node.children().filter('[data-content]')
           if block.type != old?.type || block.nextSibling != old?.nextSibling || block.previousSibling != old?.previousSibling || block.prev != old?.prev
+            if block.type != 'headline' && old.type == 'headline'
+              content.children().filter('[data-block]').insertAfter(node)
             @insertUpdateNode block, node
           if block.text != old?.text
             if node.is '[data-headline]'
-              content = node.children().filter('[data-content]')
               content.children().filter('[data-block]').insertAfter(node)
             [html] = @renderBlock block, true
             node = $(setHtml node[0], html, true)
@@ -194,9 +196,9 @@ makeChange({removes, sets, first, oldBlocks, newBlocks}): at this point, brute-f
       insertUpdateNode: (block, node)->
         if (prev = @nodeForId @data.previousSibling block)?.length then prev.after node
         else if !block.prev then @editor.node.prepend(node)
+        else if !block.previousSibling && (parentNode = @nodeForId(block.prev))?.is("[data-headline]")
+          parentNode.children().filter("[data-content]").children().first().after node
         else if (next = @nodeForId @data.nextSibling block)?.length then next.before node
-        else if (parentNode = @nodeForId(block.prev))?.is("[data-headline]")
-          parentNode.children().filter("[data-content]").append node
         else @editor.node.append(node)
       renderBlock: (block, skipChildren)->
         html = if block.type == 'headline'
