@@ -194,9 +194,9 @@ makeChange({removes, sets, first, oldBlocks, newBlocks}): at this point, brute-f
       insertUpdateNode: (block, node)->
         if (prev = @nodeForId @data.previousSibling block)?.length then prev.after node
         else if !block.prev then @editor.node.prepend(node)
+        else if (next = @nodeForId @data.nextSibling block)?.length then next.before node
         else if (parentNode = @nodeForId(block.prev))?.is("[data-headline]")
           parentNode.children().filter("[data-content]").append node
-        else if (next = @nodeForId @data.nextSibling block)?.length then next.before node
         else @editor.node.append(node)
       renderBlock: (block, skipChildren)->
         html = if block.type == 'headline'

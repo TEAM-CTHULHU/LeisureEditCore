@@ -398,10 +398,10 @@
         return prev.after(node);
       } else if (!block.prev) {
         return this.editor.node.prepend(node);
-      } else if ((ref3 = (parentNode = this.nodeForId(block.prev))) != null ? ref3.is("[data-headline]") : void 0) {
-        return parentNode.children().filter("[data-content]").append(node);
-      } else if ((ref4 = (next = this.nodeForId(this.data.nextSibling(block)))) != null ? ref4.length : void 0) {
+      } else if ((ref3 = (next = this.nodeForId(this.data.nextSibling(block)))) != null ? ref3.length : void 0) {
         return next.before(node);
+      } else if ((ref4 = (parentNode = this.nodeForId(block.prev))) != null ? ref4.is("[data-headline]") : void 0) {
+        return parentNode.children().filter("[data-content]").append(node);
       } else {
         return this.editor.node.append(node);
       }
