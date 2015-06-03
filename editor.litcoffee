@@ -529,7 +529,8 @@ on it can select if start and end are different
         @node.on 'keyup', (e)=> @handleKeyup e
         @node.on 'keydown', (e)=>
           @modCancelled = false
-          c = (e.charCode || e.keyCode || e.which)
+          #c = eventChar e
+          c = getEventChar e
           if !@addKeyPress e, c then return
           s = getSelection()
           r = s.rangeCount > 0 && s.getRangeAt(0)
@@ -581,7 +582,8 @@ on it can select if start and end are different
         [false]
       handleKeyup: (e)->
         if @ignoreModCheck = @ignoreModCheck then @ignoreModCheck--
-        if @clipboardKey || (!e.DE_shiftkey && !@modCancelled && modifyingKey((e.charCode || e.keyCode || e.which), e))
+        #if @clipboardKey || (!e.DE_shiftkey && !@modCancelled && modifyingKey(eventChar(e), e))
+        if @clipboardKey || (!e.DE_shiftkey && !@modCancelled && modifyingKey(getEventChar(e), e))
           @options.keyUp()
           @clipboardKey = null
       adjustSelection: (e)->
@@ -654,6 +656,15 @@ on it can select if start and end are different
             return @moveToBestPosition pos, prev, linePos
           prev = pos
         pos
+
+    eventChar = (e)->
+      c = (e.charCode || e.keyCode || e.which)
+
+
+    isCapslock = (e)->
+      c = (e.charCode || e.keyCode || e.which)
+      shifton = e.shiftKey || !!(e.modifiers & 4)
+      if shifton then 97 <= c <= 122 else 65 <= charCode <= 90
 
 `moveToBestPosition(pos, prev, linePos)` tries to move the caret to the best position in the HTML text.  If pos is closer to the goal, return it, otherwise move to prev and return prev.
 
