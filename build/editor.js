@@ -147,6 +147,7 @@
       this.ignoreModCheck = 0;
       this.movementGoal = null;
       this.options.setEditor(this);
+      this.currentSelectedBlock = null;
     }
 
     LeisureEditCore.prototype.getCopy = function(id) {
@@ -651,11 +652,11 @@
           return _this.handleKeyup(e);
         };
       })(this));
-      return this.node.on('keydown', (function(_this) {
+      this.node.on('keydown', (function(_this) {
         return function(e) {
           var bound, c, checkMod, r, ref, s;
           _this.modCancelled = false;
-          c = getEventChar(e);
+          c = eventChar(e);
           if (!_this.addKeyPress(e, c)) {
             return;
           }
@@ -673,9 +674,24 @@
               return _this.backspace(e, s, r);
             } else if (c === DEL) {
               return _this.del(e, s, r);
+            } else if (((64 < c && c < 91)) || ((95 < c && c < 112))) {
+              return _this.currentSelectedBlock = _this.getSelectedBlockRange();
             } else if (modifyingKey(c, e)) {
               return _this.replace(e, _this.getSelectedBlockRange(), null, false);
             }
+          }
+        };
+      })(this));
+      return this.node.on('keypress', (function(_this) {
+        return function(e) {
+          var c;
+          c = eventChar(e);
+          console.log("keypress: ", e);
+          if (_this.currentSelectedBlock && ((64 < c && c < 91)) || ((95 < c && c < 112))) {
+            _this.replace(e, _this.currentSelectedBlock, null, false);
+            _this.currentSelectedBlock = null;
+            e.preventDefault();
+            return e.stopPropagation();
           }
         };
       })(this));
@@ -746,7 +762,7 @@
       if (this.ignoreModCheck = this.ignoreModCheck) {
         this.ignoreModCheck--;
       }
-      if (this.clipboardKey || (!e.DE_shiftkey && !this.modCancelled && modifyingKey(getEventChar(e), e))) {
+      if (this.clipboardKey || (!e.DE_shiftkey && !this.modCancelled && modifyingKey(eventChar(e), e))) {
         this.options.keyUp();
         return this.clipboardKey = null;
       }
@@ -886,12 +902,12 @@
 
   isCapslock = function(e) {
     var c, shifton;
-    c = e.charCode || e.keyCode || e.which;
+    c = eventChar(e);
     shifton = e.shiftKey || !!(e.modifiers & 4);
     if (shifton) {
       (97 <= c && c <= 122);
     } else {
-      (65 <= charCode && charCode <= 90);
+      (65 <= c && c <= 90);
     }
     return {
       moveToBestPosition: function(pos, prev, linePos) {
@@ -1489,12 +1505,15 @@
   };
 
   getEventChar = function(e) {
-    var c;
+    var c, capslock, shifton;
     c = e.charCode || e.keyCode || e.which;
+    shifton = e.shiftKey || !!(e.modifiers & 4);
+    capslock = shifton ? (97 <= c && c <= 122) : (65 <= c && c <= 90);
+    console.log("shifton: " + shifton + ", capslock: " + capslock + ", charCode: " + c, e);
     if (_to_ascii.hasOwnProperty(c)) {
       c = _to_ascii[c];
     }
-    if (!e.shiftKey && (c >= 65 && c <= 90)) {
+    if (!shifton && (c >= 65 && c <= 90)) {
       c = String.fromCharCode(c + 32);
     } else if (e.shiftKey && shiftUps.hasOwnProperty(c)) {
       c = shiftUps[c];

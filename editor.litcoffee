@@ -251,6 +251,7 @@ Events:
         @ignoreModCheck = 0
         @movementGoal = null
         @options.setEditor this
+        @currentSelectedBlock = null
       getCopy: (id)-> copy @options.getBlock id
       domCursor: (node, pos)->
         if node instanceof jQuery
@@ -529,8 +530,8 @@ on it can select if start and end are different
         @node.on 'keyup', (e)=> @handleKeyup e
         @node.on 'keydown', (e)=>
           @modCancelled = false
-          #c = eventChar e
-          c = getEventChar e
+          c = eventChar e
+          #c = getEventChar e
           if !@addKeyPress e, c then return
           s = getSelection()
           r = s.rangeCount > 0 && s.getRangeAt(0)
@@ -542,7 +543,16 @@ on it can select if start and end are different
             if c == ENTER then @replace e, @getSelectedBlockRange(), '\n', false
             else if c == BS then @backspace e, s, r
             else if c == DEL then @del e, s, r
+            else if (64 < c < 91) || (95 < c < 112) then @currentSelectedBlock = @getSelectedBlockRange()
             else if modifyingKey c, e then @replace e, @getSelectedBlockRange(), null, false
+        @node.on 'keypress', (e)=>
+          c = eventChar e
+          console.log "keypress: ", e
+          if @currentSelectedBlock && (64 < c < 91) || (95 < c < 112)
+            @replace e, @currentSelectedBlock, null, false
+            @currentSelectedBlock = null
+            e.preventDefault()
+            e.stopPropagation()
       blockIdsForSelection: (sel, r)->
         if !sel then sel = getSelection()
         if sel.rangeCount == 1
@@ -582,8 +592,7 @@ on it can select if start and end are different
         [false]
       handleKeyup: (e)->
         if @ignoreModCheck = @ignoreModCheck then @ignoreModCheck--
-        #if @clipboardKey || (!e.DE_shiftkey && !@modCancelled && modifyingKey(eventChar(e), e))
-        if @clipboardKey || (!e.DE_shiftkey && !@modCancelled && modifyingKey(getEventChar(e), e))
+        if @clipboardKey || (!e.DE_shiftkey && !@modCancelled && modifyingKey(eventChar(e), e))
           @options.keyUp()
           @clipboardKey = null
       adjustSelection: (e)->
@@ -657,14 +666,12 @@ on it can select if start and end are different
           prev = pos
         pos
 
-    eventChar = (e)->
-      c = (e.charCode || e.keyCode || e.which)
-
+    eventChar = (e)-> c = (e.charCode || e.keyCode || e.which)
 
     isCapslock = (e)->
-      c = (e.charCode || e.keyCode || e.which)
+      c = eventChar e
       shifton = e.shiftKey || !!(e.modifiers & 4)
-      if shifton then 97 <= c <= 122 else 65 <= charCode <= 90
+      if shifton then 97 <= c <= 122 else 65 <= c <= 90
 
 `moveToBestPosition(pos, prev, linePos)` tries to move the caret to the best position in the HTML text.  If pos is closer to the goal, return it, otherwise move to prev and return prev.
 
@@ -1085,9 +1092,13 @@ adapted from Vega on [StackOverflow](http://stackoverflow.com/a/13127566/1026782
 
     getEventChar = (e)->
       c = (e.charCode || e.keyCode || e.which)
+      shifton = e.shiftKey || !!(e.modifiers & 4)
+      capslock = if shifton then 97 <= c <= 122 else 65 <= c <= 90
+      console.log "shifton: #{shifton}, capslock: #{capslock}, charCode: #{c}", e
       # normalize keyCode
       if _to_ascii.hasOwnProperty(c) then c = _to_ascii[c]
-      if !e.shiftKey && (c >= 65 && c <= 90) then c = String.fromCharCode(c + 32)
+      if !shifton && (c >= 65 && c <= 90) then c = String.fromCharCode(c + 32)
+      #if !e.shiftKey && (c >= 65 && c <= 90) then c = String.fromCharCode(c + 32)
       else if e.shiftKey && shiftUps.hasOwnProperty(c)
         # get shifted keyCode value
         c = shiftUps[c]
