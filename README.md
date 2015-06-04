@@ -317,7 +317,7 @@ Events:
         {block, offset} = @options.getBlockOffsetForPosition start
         {block, offset, length, type: if length == 0 then 'Caret' else 'Range'}
       replace: (e, br, text, select)->
-        e.preventDefault()
+        #e.preventDefault()
         blocks = [br.block]
         endOffset = br.offset
         if br.type == 'Range'
@@ -456,6 +456,7 @@ on it can select if start and end are different
           @options.dragEnter  e.originalEvent
           true
         @node.on 'drop', (e)=>
+          e.preventDefault()
           oe = e.originalEvent
           oe.dataTransfer.dropEffect = 'move'
           r = document.caretRangeFromPoint oe.clientX, oe.clientY
@@ -498,6 +499,7 @@ on it can select if start and end are different
           if dr = dragRange
             dragRange = null
             if e.dataTransfer.dropEffect == 'move'
+              e.preventDefault()
               sel = @getSelectedBlockRange()
               @replace e, dr, ''
               @selectBlockRange sel
@@ -518,6 +520,7 @@ on it can select if start and end are different
             clipboard.setData 'text/html', (htmlForNode node for node in sel.getRangeAt(0).cloneContents().childNodes).join ''
             clipboard.setData 'text/plain', @selectedText sel
         @node.on 'paste', (e)=>
+          e.preventDefault()
           @replace e, @getSelectedBlockRange(), e.originalEvent.clipboardData.getData('text/plain'), false
       bindMouse: ->
         @node.on 'mousedown', (e)=>
@@ -537,22 +540,28 @@ on it can select if start and end are different
           r = s.rangeCount > 0 && s.getRangeAt(0)
           @currentBlockIds = @blockIdsForSelection s, r
           [bound, checkMod] = @findKeyBinding e, r
-          if bound then @modCancelled = !checkMod
+          if bound
+            e.preventDefault()
+            @modCancelled = !checkMod
           else
             @modCancelled = false
-            if c == ENTER then @replace e, @getSelectedBlockRange(), '\n', false
-            else if c == BS then @backspace e, s, r
-            else if c == DEL then @del e, s, r
-            else if (64 < c < 91) || (95 < c < 112) then @currentSelectedBlock = @getSelectedBlockRange()
-            else if modifyingKey c, e then @replace e, @getSelectedBlockRange(), null, false
+            if c == ENTER
+              e.preventDefault()
+              @replace e, @getSelectedBlockRange(), '\n', false
+            else if c == BS
+              e.preventDefault()
+              @backspace e, s, r
+            else if c == DEL
+              e.preventDefault()
+              @del e, s, r
+            #else if modifyingKey c, e
+            else if (modifyingKey c, e) && !isAlphabetic e
+              e.preventDefault()
+              @char = getEventChar e
+              @replace e, @getSelectedBlockRange(), null, false
         @node.on 'keypress', (e)=>
-          c = eventChar e
-          console.log "keypress: ", e
-          if @currentSelectedBlock && (64 < c < 91) || (95 < c < 112)
-            @replace e, @currentSelectedBlock, null, false
-            @currentSelectedBlock = null
-            e.preventDefault()
-            e.stopPropagation()
+          e.preventDefault()
+          @replace e, @getSelectedBlockRange(), null, false
       blockIdsForSelection: (sel, r)->
         if !sel then sel = getSelection()
         if sel.rangeCount == 1
@@ -666,19 +675,16 @@ on it can select if start and end are different
           prev = pos
         pos
 
-    eventChar = (e)-> c = (e.charCode || e.keyCode || e.which)
-
-    isCapslock = (e)->
-      c = eventChar e
-      shifton = e.shiftKey || !!(e.modifiers & 4)
-      if shifton then 97 <= c <= 122 else 65 <= c <= 90
-
 `moveToBestPosition(pos, prev, linePos)` tries to move the caret to the best position in the HTML text.  If pos is closer to the goal, return it, otherwise move to prev and return prev.
 
       moveToBestPosition: (pos, prev, linePos)->
         if linePos == pos || Math.abs(@options.blockColumn(pos) - @movementGoal) < Math.abs(@options.blockColumn(prev) - @movementGoal)
           pos
         else prev.moveCaret()
+
+    eventChar = (e)-> e.charCode || e.keyCode || e.which
+
+    isAlphabetic = (e)-> !e.altKey && !e.ctrlKey && !e.metaKey && (64 < eventChar(e) < 91)
 
 BasicEditingOptions class
 =========================
@@ -1093,8 +1099,6 @@ adapted from Vega on [StackOverflow](http://stackoverflow.com/a/13127566/1026782
     getEventChar = (e)->
       c = (e.charCode || e.keyCode || e.which)
       shifton = e.shiftKey || !!(e.modifiers & 4)
-      capslock = if shifton then 97 <= c <= 122 else 65 <= c <= 90
-      console.log "shifton: #{shifton}, capslock: #{capslock}, charCode: #{c}", e
       # normalize keyCode
       if _to_ascii.hasOwnProperty(c) then c = _to_ascii[c]
       if !shifton && (c >= 65 && c <= 90) then c = String.fromCharCode(c + 32)
