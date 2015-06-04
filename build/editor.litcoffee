@@ -556,6 +556,7 @@ on it can select if start and end are different
               @del e, s, r
             #else if modifyingKey c, e
             else if (modifyingKey c, e) && !isAlphabetic e
+              console.log "non-alpha insert"
               e.preventDefault()
               @char = getEventChar e
               @replace e, @getSelectedBlockRange(), null, false
@@ -1097,17 +1098,19 @@ adapted from Vega on [StackOverflow](http://stackoverflow.com/a/13127566/1026782
       else n.outerHTML
 
     getEventChar = (e)->
-      c = (e.charCode || e.keyCode || e.which)
-      shifton = e.shiftKey || !!(e.modifiers & 4)
-      # normalize keyCode
-      if _to_ascii.hasOwnProperty(c) then c = _to_ascii[c]
-      if !shifton && (c >= 65 && c <= 90) then c = String.fromCharCode(c + 32)
-      #if !e.shiftKey && (c >= 65 && c <= 90) then c = String.fromCharCode(c + 32)
-      else if e.shiftKey && shiftUps.hasOwnProperty(c)
-        # get shifted keyCode value
-        c = shiftUps[c]
-      else c = String.fromCharCode(c)
-      c
+      if e.originalEvent.type == 'keypress' then String.fromCharCode eventChar e
+      else
+        c = (e.charCode || e.keyCode || e.which)
+        shifton = e.shiftKey || !!(e.modifiers & 4)
+        # normalize keyCode
+        if _to_ascii.hasOwnProperty(c) then c = _to_ascii[c]
+        if !shifton && (c >= 65 && c <= 90) then c = String.fromCharCode(c + 32)
+        #if !e.shiftKey && (c >= 65 && c <= 90) then c = String.fromCharCode(c + 32)
+        else if e.shiftKey && shiftUps.hasOwnProperty(c)
+          # get shifted keyCode value
+          c = shiftUps[c]
+        else c = String.fromCharCode(c)
+        c
 
     shiftKey = (c)-> 15 < c < 19
 

@@ -681,6 +681,7 @@
               e.preventDefault();
               return _this.del(e, s, r);
             } else if ((modifyingKey(c, e)) && !isAlphabetic(e)) {
+              console.log("non-alpha insert");
               e.preventDefault();
               _this.char = getEventChar(e);
               return _this.replace(e, _this.getSelectedBlockRange(), null, false);
@@ -1497,19 +1498,23 @@
 
   getEventChar = function(e) {
     var c, shifton;
-    c = e.charCode || e.keyCode || e.which;
-    shifton = e.shiftKey || !!(e.modifiers & 4);
-    if (_to_ascii.hasOwnProperty(c)) {
-      c = _to_ascii[c];
-    }
-    if (!shifton && (c >= 65 && c <= 90)) {
-      c = String.fromCharCode(c + 32);
-    } else if (e.shiftKey && shiftUps.hasOwnProperty(c)) {
-      c = shiftUps[c];
+    if (e.originalEvent.type === 'keypress') {
+      return String.fromCharCode(eventChar(e));
     } else {
-      c = String.fromCharCode(c);
+      c = e.charCode || e.keyCode || e.which;
+      shifton = e.shiftKey || !!(e.modifiers & 4);
+      if (_to_ascii.hasOwnProperty(c)) {
+        c = _to_ascii[c];
+      }
+      if (!shifton && (c >= 65 && c <= 90)) {
+        c = String.fromCharCode(c + 32);
+      } else if (e.shiftKey && shiftUps.hasOwnProperty(c)) {
+        c = shiftUps[c];
+      } else {
+        c = String.fromCharCode(c);
+      }
+      return c;
     }
-    return c;
   };
 
   shiftKey = function(c) {
