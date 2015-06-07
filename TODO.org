@@ -11,7 +11,8 @@
 * Bugs
 ** BUG spell check doesn't work right
 ** BUG undo/redo not implemented
-** BUG capslock doesn't work
+** DONE capslock doesn't work
+   CLOSED: [2015-06-04 Thu 16:48]
 ** DONE Factor out drag/drop, clipboard, keyboard, and mouse bindings into separate methods
    CLOSED: [2015-04-03 Fri 09:50]
 - subclasses can override

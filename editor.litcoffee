@@ -317,7 +317,6 @@ Events:
         {block, offset} = @options.getBlockOffsetForPosition start
         {block, offset, length, type: if length == 0 then 'Caret' else 'Range'}
       replace: (e, br, text, select)->
-        #e.preventDefault()
         blocks = [br.block]
         endOffset = br.offset
         if br.type == 'Range'
@@ -534,7 +533,6 @@ on it can select if start and end are different
         @node.on 'keydown', (e)=>
           @modCancelled = false
           c = eventChar e
-          #c = getEventChar e
           if !@addKeyPress e, c then return
           s = getSelection()
           r = s.rangeCount > 0 && s.getRangeAt(0)
@@ -554,9 +552,7 @@ on it can select if start and end are different
             else if c == DEL
               e.preventDefault()
               @del e, s, r
-            #else if modifyingKey c, e
             else if (modifyingKey c, e) && !isAlphabetic e
-              console.log "non-alpha insert"
               e.preventDefault()
               @char = getEventChar e
               @replace e, @getSelectedBlockRange(), null, false
@@ -1105,7 +1101,6 @@ adapted from Vega on [StackOverflow](http://stackoverflow.com/a/13127566/1026782
         # normalize keyCode
         if _to_ascii.hasOwnProperty(c) then c = _to_ascii[c]
         if !shifton && (c >= 65 && c <= 90) then c = String.fromCharCode(c + 32)
-        #if !e.shiftKey && (c >= 65 && c <= 90) then c = String.fromCharCode(c + 32)
         else if e.shiftKey && shiftUps.hasOwnProperty(c)
           # get shifted keyCode value
           c = shiftUps[c]
