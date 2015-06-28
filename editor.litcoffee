@@ -228,6 +228,9 @@ Observable class
         if !@listeners[type] then @listeners[type] = []
         @listeners[type].push callback
         this
+      off: (type, callback)->
+        if @listeners[type]
+          @listeners[type] = (l for l in @listeners[type] when l != callback)
       trigger: (type, args...)->
         for listener in @listeners[type] || []
           listener.apply null, args
