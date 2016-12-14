@@ -1,4 +1,4 @@
-LeisureEditCore ([EXAMPLE EDITOR](http://team-cthulhu.github.io/LeisureEditCore/examples/index.html))
+LeisureEditCore ([example editor](http://team-cthulhu.github.io/LeisureEditCore/examples/index.html))
 ===============
 Copyright (C) 2015, Bill Burdick, Roy Riggs, TEAM CTHULHU
 
