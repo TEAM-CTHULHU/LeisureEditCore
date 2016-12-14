@@ -259,7 +259,7 @@ Observable class
               @off callbackType, callback
           else
             if @listeners[type]
-              @listeners[type] = _.filter @listeners[type], (l)-> l != callback
+              @listeners[type] = @listeners[type].filter (l)-> l != callback
           this
         trigger: (type, args...)->
           if !@suppressingTriggers
@@ -283,12 +283,13 @@ featherweight JQ replacement
           results.__proto__ = FeatherJQ.prototype
           for spec in specs
             results.pushResult spec
-          results
+          return results
         find: (sel)->
           results = $()
           for node in this
-            for result in node.querySelectorAll(sel)
-              results.push result
+            if node.querySelectorAll?
+              for result in node.querySelectorAll(sel)
+                results.push result
           results
         attr: (name, value)->
           if value?
@@ -305,12 +306,12 @@ featherweight JQ replacement
         closest: (sel)->
           result = $()
           for node in this
-            if n = node.closest sel
+            if n = (if node.closest? then node else node.parentNode).closest sel
               result.push n
           result
         is: (sel)->
           for node in this
-            if node.matches sel then return true
+            if node.matches? sel then return true
           false
         parent: ->
           result = $()
@@ -481,7 +482,7 @@ Events:
               .mutable()
               .countChars targ.node, targ.pos
           else -1
-        loadURL: (url)-> $.get url, (text)=> @options.load text
+        loadURL: (url)-> $.get url, (text)=> @options.load url, text
         domCursorForDocOffset: (dOff)->
           bOff = @options.blockOffsetForDocOffset dOff
           node = @options.nodeForId bOff.block

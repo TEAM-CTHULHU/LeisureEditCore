@@ -120,7 +120,7 @@
           }
         } else {
           if (this.listeners[type]) {
-            this.listeners[type] = _.filter(this.listeners[type], function(l) {
+            this.listeners[type] = this.listeners[type].filter(function(l) {
               return l !== callback;
             });
           }
@@ -168,7 +168,7 @@
           spec = specs[j];
           results.pushResult(spec);
         }
-        results;
+        return results;
       }
 
       FeatherJQ.prototype.find = function(sel) {
@@ -176,10 +176,12 @@
         results = $();
         for (j = 0, len = this.length; j < len; j++) {
           node = this[j];
-          ref = node.querySelectorAll(sel);
-          for (o = 0, len1 = ref.length; o < len1; o++) {
-            result = ref[o];
-            results.push(result);
+          if (node.querySelectorAll != null) {
+            ref = node.querySelectorAll(sel);
+            for (o = 0, len1 = ref.length; o < len1; o++) {
+              result = ref[o];
+              results.push(result);
+            }
           }
         }
         return results;
@@ -216,7 +218,7 @@
         result = $();
         for (j = 0, len = this.length; j < len; j++) {
           node = this[j];
-          if (n = node.closest(sel)) {
+          if (n = (node.closest != null ? node : node.parentNode).closest(sel)) {
             result.push(n);
           }
         }
@@ -227,7 +229,7 @@
         var j, len, node;
         for (j = 0, len = this.length; j < len; j++) {
           node = this[j];
-          if (node.matches(sel)) {
+          if (typeof node.matches === "function" ? node.matches(sel) : void 0) {
             return true;
           }
         }
@@ -545,7 +547,7 @@
       LeisureEditCore.prototype.loadURL = function(url) {
         return $.get(url, (function(_this) {
           return function(text) {
-            return _this.options.load(text);
+            return _this.options.load(url, text);
           };
         })(this));
       };

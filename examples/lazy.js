@@ -59,7 +59,7 @@
  * [@dtao](https://github.com/dtao)
  */
 
-(function(context) {
+define([], (function(context) {
   /**
    * Wraps an object and returns a {@link Sequence}. For `null` or `undefined`,
    * simply returns an empty sequence (see {@link Lazy.strict} for a stricter
@@ -5787,18 +5787,19 @@
 
   /*** Exposing Lazy to the world ***/
 
-  // For Node.js
-  if (typeof module === "object" && module && module.exports === context) {
-    module.exports = Lazy;
+//  // For Node.js
+//  if (typeof module === "object" && module && module.exports === context) {
+//    module.exports = Lazy;
+//
+//  // For browsers
+//  } else {
+//    context.Lazy = Lazy;
+//  }
+    return {_: Lazy};
 
-  // For browsers
-  } else {
-    context.Lazy = Lazy;
-  }
-
-}(this));
+}(this)));
 
 //if (!(typeof module === "object" && module && module.exports === this)) {
 //    (typeof window != 'undefined' ? window : global).Lazy = this.Lazy;
 //}
-Lazy = this.Lazy;
+//Lazy = this.Lazy;

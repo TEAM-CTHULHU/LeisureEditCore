@@ -1,6 +1,6 @@
 .editor {
     white-space: pre-wrap;
-    max-height: calc(100% - 2em);
+    height: calc(100% - 3.5em);
     overflow: auto;
     padding: 5px;
     -webkit-user-select: none;
@@ -53,12 +53,12 @@
 #sourceLayout {
     /*width: calc(50% - 10px);*/
     /* display: inline-block; */
-    max-height: calc(50% - 5px);
+    height: calc(60% - 5px);
     vertical-align: top;
 }
 #plainEditor {
     white-space: pre;
-    max-height: calc(100% - 2.5em);
+    height: calc(100% - 3.5em);
     margin-bottom: 0.5em;
     border: solid black 2px;
     padding: 5px;
@@ -72,14 +72,13 @@
 #blocksLayout {
     /*width: calc(50% - 10px);*/
     /* display: inline-block; */
-    max-height: calc(50% - 5px);
+    height: calc(40% - 5px);
     vertical-align: top;
     padding-top: 0.5em;
 }
 #blocks {
     white-space: pre;
-    max-height: calc(100% - 2.5em);
-    margin-bottom: 0.5em;
+    height: calc(100% - 1em);
     border: solid rgb(230, 173, 205) 2px;
     padding: 5px;
     overflow: auto;
