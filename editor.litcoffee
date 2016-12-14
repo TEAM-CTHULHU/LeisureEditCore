@@ -1,4 +1,4 @@
-LeisureEditCore
+LeisureEditCore ([EXAMPLE EDITOR](http://team-cthulhu.github.io/LeisureEditCore/examples/index.html))
 ===============
 Copyright (C) 2015, Bill Burdick, Roy Riggs, TEAM CTHULHU
 
@@ -13,8 +13,6 @@ editor, extracted out into a small HTML5 library.  LeisureEditCore is
 pluggable with an options object that contains customization hooks.
 Code and examples are in Coffeescript (a JS build is provided as a
 convenience).
-
-*NOTE:* parseBlocks has moved to DataStore.  Pluggability changes later.
 
 Basic Idea
 ==========
