@@ -129,12 +129,12 @@
       };
 
       Observable.prototype.trigger = function() {
-        var args, j, len, listener, ref, results1, type;
+        var args, j, len1, listener, ref, results1, type;
         type = arguments[0], args = 2 <= arguments.length ? slice.call(arguments, 1) : [];
         if (!this.suppressingTriggers) {
           ref = this.listeners[type] || [];
           results1 = [];
-          for (j = 0, len = ref.length; j < len; j++) {
+          for (j = 0, len1 = ref.length; j < len1; j++) {
             listener = ref[j];
             results1.push(listener.apply(null, args));
           }
@@ -160,11 +160,11 @@
       extend(FeatherJQ, superClass);
 
       function FeatherJQ() {
-        var j, len, results, spec, specs;
+        var j, len1, results, spec, specs;
         specs = 1 <= arguments.length ? slice.call(arguments, 0) : [];
         results = [];
         results.__proto__ = FeatherJQ.prototype;
-        for (j = 0, len = specs.length; j < len; j++) {
+        for (j = 0, len1 = specs.length; j < len1; j++) {
           spec = specs[j];
           results.pushResult(spec);
         }
@@ -172,13 +172,13 @@
       }
 
       FeatherJQ.prototype.find = function(sel) {
-        var j, len, len1, node, o, ref, result, results;
+        var j, len1, len2, node, o, ref, result, results;
         results = $();
-        for (j = 0, len = this.length; j < len; j++) {
+        for (j = 0, len1 = this.length; j < len1; j++) {
           node = this[j];
           if (node.querySelectorAll != null) {
             ref = node.querySelectorAll(sel);
-            for (o = 0, len1 = ref.length; o < len1; o++) {
+            for (o = 0, len2 = ref.length; o < len2; o++) {
               result = ref[o];
               results.push(result);
             }
@@ -188,9 +188,9 @@
       };
 
       FeatherJQ.prototype.attr = function(name, value) {
-        var j, len, node;
+        var j, len1, node;
         if (value != null) {
-          for (j = 0, len = this.length; j < len; j++) {
+          for (j = 0, len1 = this.length; j < len1; j++) {
             node = this[j];
             node.setAttribute(name, value);
           }
@@ -201,9 +201,9 @@
       };
 
       FeatherJQ.prototype.prop = function(name, value) {
-        var j, len, node, ref;
+        var j, len1, node, ref;
         if (value != null) {
-          for (j = 0, len = this.length; j < len; j++) {
+          for (j = 0, len1 = this.length; j < len1; j++) {
             node = this[j];
             node[name] = value;
           }
@@ -214,9 +214,9 @@
       };
 
       FeatherJQ.prototype.closest = function(sel) {
-        var j, len, n, node, result;
+        var j, len1, n, node, result;
         result = $();
-        for (j = 0, len = this.length; j < len; j++) {
+        for (j = 0, len1 = this.length; j < len1; j++) {
           node = this[j];
           if (n = (node.closest != null ? node : node.parentNode).closest(sel)) {
             result.push(n);
@@ -226,8 +226,8 @@
       };
 
       FeatherJQ.prototype.is = function(sel) {
-        var j, len, node;
-        for (j = 0, len = this.length; j < len; j++) {
+        var j, len1, node;
+        for (j = 0, len1 = this.length; j < len1; j++) {
           node = this[j];
           if (typeof node.matches === "function" ? node.matches(sel) : void 0) {
             return true;
@@ -237,9 +237,9 @@
       };
 
       FeatherJQ.prototype.parent = function() {
-        var j, len, node, p, result;
+        var j, len1, node, p, result;
         result = $();
-        for (j = 0, len = this.length; j < len; j++) {
+        for (j = 0, len1 = this.length; j < len1; j++) {
           node = this[j];
           if (p = node.parentNode) {
             result.push(p);
@@ -249,14 +249,14 @@
       };
 
       FeatherJQ.prototype.data = function(key, value) {
-        var j, len, node, ref, results1;
+        var j, len1, node, ref, results1;
         if (!key) {
           return getUserData(this[0], true);
         } else if (value == null) {
           return (ref = getUserData(this[0], true)) != null ? ref[key] : void 0;
         } else {
           results1 = [];
-          for (j = 0, len = this.length; j < len; j++) {
+          for (j = 0, len1 = this.length; j < len1; j++) {
             node = this[j];
             getUserData(node, true)[key] = value;
             results1.push(this);
@@ -266,9 +266,9 @@
       };
 
       FeatherJQ.prototype.on = function(evtType, func) {
-        var evt, j, len, node, results1;
+        var evt, j, len1, node, results1;
         results1 = [];
-        for (j = 0, len = this.length; j < len; j++) {
+        for (j = 0, len1 = this.length; j < len1; j++) {
           node = this[j];
           evt = getEvents(node);
           if (!evt[evtType]) {
@@ -281,18 +281,18 @@
       };
 
       FeatherJQ.prototype.off = function(evtType, func) {
-        var events, h, j, len, node, results1;
+        var events, h, j, len1, node, results1;
         results1 = [];
-        for (j = 0, len = this.length; j < len; j++) {
+        for (j = 0, len1 = this.length; j < len1; j++) {
           node = this[j];
           if (!(events = getEvents(node) && events[evtType])) {
             continue;
           }
           events = func ? (function() {
-            var len1, o, ref, results2;
+            var len2, o, ref, results2;
             ref = events[evtType];
             results2 = [];
-            for (o = 0, len1 = ref.length; o < len1; o++) {
+            for (o = 0, len2 = ref.length; o < len2; o++) {
               h = ref[o];
               if (h !== func) {
                 results2.push(h);
@@ -342,9 +342,9 @@
     };
     FJQData = new WeakMap;
     runEvent = function(evt) {
-      var handler, j, len, ref, ref1;
+      var handler, j, len1, ref, ref1;
       ref1 = (ref = getEvents(evt.currentTarget)) != null ? ref : [];
-      for (j = 0, len = ref1.length; j < len; j++) {
+      for (j = 0, len1 = ref1.length; j < len1; j++) {
         handler = ref1[j];
         handler(evt);
       }
@@ -1098,9 +1098,9 @@
       };
 
       LeisureEditCore.prototype.findKeyBinding = function(e, r) {
-        var f, j, k, len, ref;
+        var f, j, k, len1, ref;
         ref = this.keyCombos;
-        for (j = 0, len = ref.length; j < len; j++) {
+        for (j = 0, len1 = ref.length; j < len1; j++) {
           k = ref[j];
           if (f = this.options.bindings[k]) {
             this.lastKeys = [];
@@ -1306,13 +1306,13 @@
       };
 
       LeisureEditCore.prototype.activateScripts = function(jq) {
-        var activating, j, len, newScript, ref, results1, script, text;
+        var activating, j, len1, newScript, ref, results1, script, text;
         if (!activating) {
           activating = true;
           try {
             ref = jq.find('script');
             results1 = [];
-            for (j = 0, len = ref.length; j < len; j++) {
+            for (j = 0, len1 = ref.length; j < len1; j++) {
               script = ref[j];
               text = !script.type || script.type.toLowerCase() === 'text/javascript' ? script.textContent : script.type.toLowerCase() === 'text/coffeescript' ? CoffeeScript.compile(script.textContent, {
                 bare: true
@@ -1561,11 +1561,25 @@
       };
 
       BasicEditingOptions.prototype.getText = function() {
-        return this.data.getText();
+        var block, text;
+        text = '';
+        block = this.data.getBlock(this.data.getFirst());
+        while (block) {
+          text += block.text;
+          block = this.data.getBlock(block.next);
+        }
+        return text;
       };
 
       BasicEditingOptions.prototype.getLength = function() {
-        return this.data.getLength();
+        var block, len;
+        len = 0;
+        block = this.data.getBlock(this.data.getFirst());
+        while (block) {
+          len += block.text.length;
+          block = this.data.getBlock(block.next);
+        }
+        return len;
       };
 
       BasicEditingOptions.prototype.isValidDocOffset = function(offset) {
@@ -1574,7 +1588,7 @@
 
       BasicEditingOptions.prototype.validatePositions = function() {
         var block, cursor, j, node, offset, ref;
-        block = this.data.blocks[this.data.getFirst()];
+        block = this.data.getBlock(this.data.getFirst());
         while (block) {
           if (node = this.nodeForId(block._id)[0]) {
             cursor = this.domCursor(node, 0).mutable();
@@ -1589,7 +1603,7 @@
               cursor.forwardChar();
             }
           }
-          block = this.data.blocks[block.next];
+          block = this.data.getBlock(block.next);
         }
       };
 
@@ -1665,10 +1679,10 @@
       }
 
       DataStore.prototype.load = function(name, text) {
-        var block, blockMap, i, j, len, newBlocks, prev, ref;
+        var block, blockMap, i, j, len1, newBlocks, prev, ref;
         blockMap = {};
         newBlocks = this.parseBlocks(text);
-        for (i = j = 0, len = newBlocks.length; j < len; i = ++j) {
+        for (i = j = 0, len1 = newBlocks.length; j < len1; i = ++j) {
           block = newBlocks[i];
           block._id = this.newId();
           blockMap[block._id] = block;
@@ -1885,14 +1899,14 @@
       };
 
       DataStore.prototype.computeRemovesAndNewBlockIds = function(oldBlocks, newBlocks, newBlockMap, removes) {
-        var i, j, len, len1, newBlock, o, oldBlock, prev, ref;
+        var i, j, len1, len2, newBlock, o, oldBlock, prev, ref;
         ref = oldBlocks.slice(newBlocks.length, oldBlocks.length);
-        for (j = 0, len = ref.length; j < len; j++) {
+        for (j = 0, len1 = ref.length; j < len1; j++) {
           oldBlock = ref[j];
           removes[oldBlock._id] = oldBlock;
         }
         prev = null;
-        for (i = o = 0, len1 = newBlocks.length; o < len1; i = ++o) {
+        for (i = o = 0, len2 = newBlocks.length; o < len2; i = ++o) {
           newBlock = newBlocks[i];
           if (oldBlock = oldBlocks[i]) {
             newBlock._id = oldBlock._id;
@@ -2324,7 +2338,7 @@
       };
 
       DataStore.prototype.verifyIndex = function() {
-        var bArray, blockIds, errs, iArray, j, last, len, node, offset, ref, treeIds;
+        var bArray, blockIds, errs, iArray, j, last, len1, node, offset, ref, treeIds;
         iArray = this.indexArray();
         treeIds = _.map(iArray, _.property('id'));
         bArray = this.blockArray();
@@ -2334,7 +2348,7 @@
         }
         last = null;
         errs = new BlockErrors();
-        for (j = 0, len = iArray.length; j < len; j++) {
+        for (j = 0, len1 = iArray.length; j < len1; j++) {
           node = iArray[j];
           if (node.length !== ((ref = this.getBlock(node.id)) != null ? ref.text.length : void 0)) {
             errs.badId(node.id, 'bad index length');
@@ -2410,11 +2424,11 @@
       };
 
       BlockErrors.prototype.errors = function() {
-        var id, j, len, ref, results1;
+        var id, j, len1, ref, results1;
         if (!this.isEmpty()) {
           ref = this.order;
           results1 = [];
-          for (j = 0, len = ref.length; j < len; j++) {
+          for (j = 0, len1 = ref.length; j < len1; j++) {
             id = ref[j];
             results1.push([id, "(" + this.ids[id] + ")"]);
           }
@@ -2551,9 +2565,9 @@
     blockText = function(blocks) {
       var block;
       return ((function() {
-        var j, len, results1;
+        var j, len1, results1;
         results1 = [];
-        for (j = 0, len = blocks.length; j < len; j++) {
+        for (j = 0, len1 = blocks.length; j < len1; j++) {
           block = blocks[j];
           results1.push(block.text);
         }

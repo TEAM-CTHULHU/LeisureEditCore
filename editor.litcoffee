@@ -23,15 +23,17 @@ LeisureEditCore edits a doubly-linked list of newline-terminated text
 The rendered DOM tree contains the full text of the block list in the
 proper order, along with ids from the blocks.  Some of the text may
 not be visible and there may be a lot of items in the rendered DOM
-that are not in the backing structure.  Also, the rendered DOM may
-have a nested tree-structure.
+that are not in the blocks.  Also, the rendered DOM may have a nested
+tree-structure.
 
 When the user makes a change, the editor:
 
-1. maps the cursor location in the DOM to the corresponding location in the backing structure
-2. changes backing structure text, regenerating part of the backing structure
-3. rerenders the corrsponding DOM
+1. maps the cursor location in the DOM to the corresponding location in the blocks
+2. changes block text, regenerating part of the blocks
+3. rerenders the DOM corresponding to the changed blocks
 4. replaces the new DOM into the page
+
+![Editor flow](editorFlow.png)
 
 Of course the editor supports [custom key bindings](#defaultBindings).
 
@@ -42,66 +44,58 @@ the instructions below to use it.
 
 [Here](http://team-cthulhu.github.io/LeisureEditCore/examples/index.html) is an example that edits org-mode text.
 
-LeisureEditCore
-===============
-Create a LeisureEditCore object like this: `new LeisureEditCore element, options`.
-
-`element` is the HTML element that you want to contain editable code.
-
-`options` is an object that tells LeisureEditCore things like how to convert text
-to a list of block objects (see below).
+Concepts
+========
 
 Blocks
-======
+------
 * `_id`: the block id
-* `type`: the type of block as a string (examples: 'text', 'code')
+* `text`: the text of the block
 * `prev`: the id of the previous block (optional)
 * `next`: the id of the next block (optional)
-* `text`: the text of the block
-* EXTRA STUFF: you can store other things in your blocks
+* EXTRA STUFF: you can store whatever extra things you like in your text blocks
 
-Options
-=======
-When you make a LeisureEditCore instance, you must provide an options
-object.  BasicEditingOptions is the base options class and
-DataStoreEditingOptions is more deluxe and connects to an
-observable data store (you can use an instance of DataStore or
-adapt one of your own).
+BlockOffsets
+------------
+{block: aBlock, offset: aNumber}
+aBlock can be an id or a block
 
-Hooks you must define for BasicEditingOptions objects
------------------------------------------------------
-Here are the hook methods you need to provide:
+Editor (see below for more detailed documentation)
+--------------------------------------------------
+An instance of LeisureEditCore.  You must provide an HTML node to
+contain the document contents and an options object to configure the
+editor.
 
-* `parseBlocks(text) -> blocks`: parse text into array of blocks -- DO NOT provide _id, prev, or next, they may be overwritten!
-* `renderBlock(block) -> [html, next]`: render a block (and potentially its children) and return the HTML and the next blockId if there is one
-  * Block DOM (DOM for a block) must be a single element with the same id as the block.
-  * Block DOM may contain nested block DOM.
-  * each block's DOM should have the same id as the block and have a data-block attribute
-  * non-editable parts of the DOM should have contenteditable=false
-  * completely skipped parts should be non-editable and have a data-noncontent attribute
+Editor options object (see below for more detailed documentation)
+-----------------------------------------------------------------
+DataStoreEditingOptions is the recommended options object but
+you can also subclass BasicEditingOptions.
 
-After that, you must render the changes into HTML and replace them into the element.
+Data object (see below for more detailed documentation)
+-------------------------------------------------------
+Manages the document.  It's responsible for parsing text into blocks,
+accessing the blocks, making changes, and converting between block
+locations and document locations.
 
-Properties of BasicEditingOptions
----------------------------------
-* `blocks {id -> block}`: block table
-* `first`: id of first block
-* `bindings {keys -> binding(editor, event, selectionRange)}`: a map of bindings (can use LeisureEditCore.defaultBindings)
+Basic usage
+-----------
+To use this in the recommended way...
 
-Methods of BasicEditingOptions
-------------------------------
-* `getBlock(id) -> block?`: get the current block for id
-* `getContainer(node) -> Node?`: get block DOM node containing for a node
-* `getFirst() -> blockId`: get the first block id
-* `domCursor(node, pos) -> DOMCursor`: return a domCursor that skips over non-content
-* `keyUp(editor) -> void`: handle keyup after-actions
-* `topRect() -> rect?`: returns null or the rectangle of a toolbar at the page top
-* `blockColumn(pos) -> colNum`: returns the start column on the page for the current block
-* `load(el, text) -> void`: parse text into blocks and replace el's contents with rendered DOM
+1. Subclass DataStoreEditingOptions and provide a renderBlock(block) method
+2. Subclass DataStore and provide a parseBlocks(text) method
+3. Create an editor object with your options object on your data object
+4. Call the load(name, text) method on your options object
 
-Packages we use
-===============
-- [DOMCursor](https://github.com/zot/DOMCursor) (included), for finding text locations in DOM trees
+Included packages
+=================
+- [DOMCursor](https://github.com/zot/DOMCursor) -- locating text in DOM trees
+- [Advice](advice.litcoffee) -- method advice
+
+Third-party packages we use (also included)
+===========================================
+- [lodash](https://lodash.com/) -- collection, FP, and async utilities
+- [fingertree](https://github.com/qiao/fingertree.js) -- the swiss army knife of data structures
+- [immutable](http://facebook.github.io/immutable-js) -- immutable data structures
 
 Building
 ========
@@ -130,9 +124,15 @@ misrepresented as being the original software.
 
 3. This notice may not be removed or altered from any source distribution.
 
-Code
-====
-Here is the code for [LeisureEditCore](https://github.com/TEAM-CTHULHU/LeisureEditCore).
+LeisureEditCore
+===============
+Create a LeisureEditCore object like this: `new LeisureEditCore editorElement, options`.
+
+`editorElement` is the HTML element that you want to contain editable text.
+
+`options` is an object that tells LeisureEditCore things like how to
+convert text to a list of block objects (see below).  See
+BasicEditingOptions and DataStoreEditingOptions for more info.
 
     define ['./domCursor', 'fingertree', 'immutable', './advice', 'lodash'], (DOMCursor, Fingertree, Immutable, Advice, _)->
       {
@@ -975,16 +975,37 @@ BasicEditingOptions class
 BasicEditingOptions is an the options base class.
 
 Events:
-  `load`: new text loaded into the editor
-
-      class BasicEditingOptions extends Observable
+  `load`: new text was loaded into the editor
 
 Hook methods (required)
 -----------------------
 
 `renderBlock(block) -> [html, next]`: render a block (and potentially its children) and return the HTML and the next blockId if there is one
-* Block DOM (DOM for a block) must be a single element with the same id as the block.
-* Block DOM may contain nested block DOM.
+
+  * Block DOM (DOM for a block) must be a single element with the same id as the block.
+  * Block DOM may contain nested block DOM.
+  * each block's DOM should have the same id as the block and have a data-block attribute
+  * non-editable parts of the DOM should have contenteditable=false
+  * completely skipped parts should be non-editable and have a data-noncontent attribute
+
+Properties of BasicEditingOptions
+---------------------------------
+* `blocks {id -> block}`: block table
+* `first`: id of first block
+* `bindings {keys -> binding(editor, event, selectionRange)}`: a map of bindings (can use LeisureEditCore.defaultBindings)
+
+Methods of BasicEditingOptions
+------------------------------
+* `getBlock(id) -> block?`: get the current block for id
+* `getContainer(node) -> Node?`: get block DOM node containing for a node
+* `getFirst() -> blockId`: get the first block id
+* `domCursor(node, pos) -> DOMCursor`: return a domCursor that skips over non-content
+* `keyUp(editor) -> void`: handle keyup after-actions
+* `topRect() -> rect?`: returns null or the rectangle of a toolbar at the page top
+* `blockColumn(pos) -> colNum`: returns the start column on the page for the current block
+* `load(el, text) -> void`: parse text into blocks and replace el's contents with rendered DOM
+
+      class BasicEditingOptions extends Observable
 
         renderBlock: (block)-> throw new Error "options.renderBlock(block) is not implemented"
 
@@ -1083,7 +1104,7 @@ Main code
           if @editor.node[0].compareDocumentPosition(node) & Element.DOCUMENT_POSITION_CONTAINED_BY
             $(node).closest('[data-block]')[0]
 
-`load(el, text) -> void`: parse text into blocks and replace el's contents with rendered DOM
+`load(name, text) -> void`: parse text into blocks and trigger a 'load' event
 
         load: (name, text)->
           @options.suppressTriggers =>
@@ -1128,11 +1149,23 @@ Main code
           while next && [html, next] = @renderBlock @getBlock next
             result += html
           result
-        getText: -> @data.getText()
-        getLength: -> @data.getLength()
+        getText: ->
+          text = ''
+          block = @data.getBlock @data.getFirst()
+          while block
+            text += block.text
+            block = @data.getBlock block.next
+          text
+        getLength: ->
+          len = 0
+          block = @data.getBlock @data.getFirst()
+          while block
+            len += block.text.length
+            block = @data.getBlock block.next
+          len
         isValidDocOffset: (offset)-> 0 <= offset <= @getLength()
         validatePositions: ->
-          block = @data.blocks[@data.getFirst()]
+          block = @data.getBlock @data.getFirst()
           while block
             if node = @nodeForId(block._id)[0]
               cursor = @domCursor(node, 0).mutable()
@@ -1141,7 +1174,7 @@ Main code
                 if cursor.isEmpty() || !sameCharacter cursor.character(), block.text[offset]
                   return {block, offset}
                 cursor.forwardChar()
-            block = @data.blocks[block.next]
+            block = @data.getBlock block.next
 
       spaces = String.fromCharCode( 32, 160)
 
@@ -1182,10 +1215,17 @@ Main code
 
 DataStore
 =========
-Events:
-  `change {adds, updates, removes, oldFirst, old}`: data changed
+An efficient block storage mechanism used by DataStoreEditingOptions
 
-API methods
+Hook methods -- you must define these in your subclass
+------------------------------------------------------
+* `parseBlocks(text) -> blocks`: parse text into array of blocks -- DO NOT provide _id, prev, or next, they may be overwritten!
+
+Events
+------
+Data objects support the Observable protocol and emit change events in response to data changes
+
+`change {adds, updates, removes, oldFirst, old}`
 
   * `oldFirst id`: the previous first (might be the same as the current)
   * `adds {id->true}`: added items
@@ -1193,16 +1233,30 @@ API methods
   * `removes {id->true}`: removed items
   * `old {id->old block}`: the old items from updates and removes
 
-Data model -- override/reset these if you want to change how the store accesses data
+Internal API -- provide/override these if you want to change how the store accesses data
+----------------------------------------------------------------------------------------
 
-  * `blocks` - currently holds the block object
-  * `getFirst()`
-  * `setFirst(firstId)`
-  * `getBlock(id)`
-  * `setBlock(id, block)`
-  * `deleteBlock(id)`
-  * `eachBlock(func(block [, id]))` -- iterate with func (exit if func returns false)
-  * `load(first, blocks)` -- should trigger 'load'
+* `getFirst()`
+* `setFirst(firstId)`
+* `getBlock(id)`
+* `setBlock(id, block)`
+* `deleteBlock(id)`
+* `eachBlock(func(block [, id]))` -- iterate with func (exit if func returns false)
+* `load(first, blocks)` -- should trigger 'load'
+
+External API -- used from outside; alternative data objects must support these methods.
+---------------------------------------------------------------------------------------
+
+In addition to the methods below, data objects must support the Observable protocol and emit
+change events in response to data changes
+
+* `getFirst() -> id`: id of the first block
+* `getBlock(id) -> block`: the block for id
+* `load(name, text)`: replace the current document
+* `newId()`:
+* `docOffsetForBlockOffset(args...) -> offset`: args can be a blockOffset or block, offset
+* `blockOffsetForDocOffset(offset) -> blockOffset`: the block offset for a position in the document
+* `suppressTriggers(func) -> func's return value`: suppress triggers while executing func (inherited from Observable)
 
 <!-- -->
 
@@ -1243,6 +1297,9 @@ Data model -- override/reset these if you want to change how the store accesses 
             makeChanges: diag: afterMethod ->
               if @changeCount == 0 then @diag()
           if flag then @diag()
+
+`getLength() -> number`: the length of the entire document
+
         getLength: -> @blockIndex.measure().length
         makeChanges: (func)->
           @changeCount++
@@ -1454,6 +1511,9 @@ Data model -- override/reset these if you want to change how the store accesses 
             [first, rest] = @splitBlockIndexOnId id
             if rest.peekFirst()?.id == id
               @setIndex first.concat rest.removeFirst()
+
+`docOffsetForBlockOffset(args...) -> offset`: args can be a blockOffset or block, offset
+
         docOffsetForBlockOffset: (block, offset)->
           if typeof block == 'object'
             offset = block.offset
@@ -1485,6 +1545,9 @@ Data model -- override/reset these if you want to change how the store accesses 
           if startOffset.block == endOffset.block
             block.text.substring startOffset.offset, endOffset.offset
           else text.substring(startOffset.offset) + block.text.substring 0, endOffset.offset
+
+`getText(): -> string`: the text for the entire document
+
         getText: ->
           text = ''
           @eachBlock (block)-> text += block.text
