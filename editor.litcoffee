@@ -78,10 +78,11 @@ Basic usage
 -----------
 To use this in the recommended way...
 
+1. The code uses AMD style and depends on 'lodash', 'fingertree', and 'immutable' which you will probably need to map.  This is so that if you are using any of these packages, you won't have to include them more than once.
 1. Subclass DataStoreEditingOptions and provide a renderBlock(block) method
-2. Subclass DataStore and provide a parseBlocks(text) method
-3. Create an editor object with your options object on your data object
-4. Call the load(name, text) method on your options object
+1. Subclass DataStore and provide a parseBlocks(text) method
+1. Create an editor object with your options object on your data object
+1. Call the load(name, text) method on your options object
 
 Included packages
 =================
