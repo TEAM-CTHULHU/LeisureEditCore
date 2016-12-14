@@ -8,7 +8,7 @@
       immutable: '../build/immutable-3.8.1.min',
       fingertree: '../build/fingertree',
       jquery: 'jquery-2.1.3.min',
-      lodash: '../build/lodash.full-4.14.1'
+      lodash: '../build/lodash-4.17.2.min'
     }
   });
 
