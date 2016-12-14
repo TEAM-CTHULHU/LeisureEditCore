@@ -28,10 +28,10 @@ tree-structure.
 
 When the user makes a change, the editor:
 
-1. maps the cursor location in the DOM to the corresponding location in the blocks
-2. changes block text, regenerating part of the blocks
-3. rerenders the DOM corresponding to the changed blocks
-4. replaces the new DOM into the page
+  1. maps the cursor location in the DOM to the corresponding location in the blocks
+  2. changes block text, regenerating part of the blocks
+  3. rerenders the DOM corresponding to the changed blocks
+  4. replaces the new DOM into the page
 
 ![Editor flow](editorFlow.png)
 
@@ -46,11 +46,11 @@ the instructions below to use it.
 
 Blocks
 ------
-* `_id`: the block id
-* `text`: the text of the block
-* `prev`: the id of the previous block (optional)
-* `next`: the id of the next block (optional)
-* EXTRA STUFF: you can store whatever extra things you like in your text blocks
+  * `_id`: the block id
+  * `text`: the text of the block
+  * `prev`: the id of the previous block (optional)
+  * `next`: the id of the next block (optional)
+  * EXTRA STUFF: you can store whatever extra things you like in your text blocks
 
 BlockOffsets
 ------------
