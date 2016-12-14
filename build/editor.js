@@ -5,7 +5,7 @@
     hasProp = {}.hasOwnProperty,
     indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
-  define(['./domCursor', 'fingertree', 'immutable', './advice'], function(DOMCursor, Fingertree, Immutable, Advice) {
+  define(['./domCursor', 'fingertree', 'immutable', './advice', 'lodash'], function(DOMCursor, Fingertree, Immutable, Advice, _) {
     var $, BS, BasicEditingOptions, BlockErrors, DEL, DOWN, DataStore, DataStoreEditingOptions, END, ENTER, FJQData, FeatherJQ, HOME, LEFT, LeisureEditCore, Observable, PAGEDOWN, PAGEUP, RIGHT, Set, TAB, UP, _to_ascii, activating, afterMethod, beforeMethod, blockText, changeAdvice, computeNewStructure, copyBlock, defaultBindings, dragRange, escapeHtml, eventChar, findEditor, getDataProperty, getEventChar, getEvents, getNodeData, getUserData, htmlForNode, idCounter, imbeddedBoundary, indexNode, insertAfterSplit, insertInSplit, is$, isAlphabetic, isEditable, keyFuncs, last, link, maxLastKeys, modifiers, modifyingKey, posFor, preserveSelection, preservingSelection, replacements, root, runEvent, sameCharacter, selectRange, set$, shiftKey, shiftUps, spaces, specialKeys, treeToArray, useEvent, wrapDiag;
     selectRange = DOMCursor.selectRange;
     Set = Immutable.Set;

@@ -42,6 +42,8 @@ Using/Installing LeisureEditCore
 Make sure your webpage loads the javascript files in the `build` directory.  Follow
 the instructions below to use it.
 
+[Here](http://team-cthulhu.github.io/LeisureEditCore/examples/index.html) is an example that edits org-mode text.
+
 LeisureEditCore
 ===============
 Create a LeisureEditCore object like this: `new LeisureEditCore element, options`.
@@ -134,7 +136,7 @@ Code
 ====
 Here is the code for [LeisureEditCore](https://github.com/TEAM-CTHULHU/LeisureEditCore).
 
-    define ['./domCursor', 'fingertree', 'immutable', './advice'], (DOMCursor, Fingertree, Immutable, Advice)->
+    define ['./domCursor', 'fingertree', 'immutable', './advice', 'lodash'], (DOMCursor, Fingertree, Immutable, Advice, _)->
       {
         selectRange,
       } = DOMCursor
