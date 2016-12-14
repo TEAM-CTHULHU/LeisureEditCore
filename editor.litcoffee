@@ -44,9 +44,6 @@ the instructions below to use it.
 
 [Here](http://team-cthulhu.github.io/LeisureEditCore/examples/index.html) is an example that edits org-mode text.
 
-Concepts
-========
-
 Blocks
 ------
 * `_id`: the block id
