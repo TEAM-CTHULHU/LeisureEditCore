@@ -270,9 +270,10 @@ Observable class
           finally
             @suppressingTriggers = oldSuppress
 
-SimpleJq class
-==============
-featherweight JQ replacement
+FeatherJQ class
+==============-
+A featherweight JQuery replacement.  Users can use set$ to make it use
+the real jQuery, like this: `set$($, (obj)-> obj instanceof $)`
 
       class FeatherJQ extends Array
         constructor: (specs...)->
