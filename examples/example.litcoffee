@@ -35,7 +35,7 @@ it in the editing options and options delegate it to the store.
         blockText
         posFor
         escapeHtml
-        copy
+        copyBlock
         LeisureEditCore
         set$
       } = Editor

@@ -13,10 +13,10 @@
   });
 
   require(['./org', './docOrg', '../build/editor', 'jquery'], function(Org, DocOrg, Editor, $) {
-    var DataStore, DataStoreEditingOptions, FancyEditing, Fragment, Headline, LeisureEditCore, OrgData, OrgEditing, ParsedCodeBlock, PlainEditing, Results, SimpleMarkup, Source, addChange, blockAttrs, blockLabel, blockSource, blockText, checkStructure, contentSpan, copy, data, displayStructure, docBlockOrg, escapeAttr, escapeHtml, getCodeItems, getId, greduce, last, numSpan, orgDoc, orgEditing, parent, parseOrgDoc, parseOrgMode, parseYaml, plainEditing, posFor, set$, siblings;
+    var DataStore, DataStoreEditingOptions, FancyEditing, Fragment, Headline, LeisureEditCore, OrgData, OrgEditing, ParsedCodeBlock, PlainEditing, Results, SimpleMarkup, Source, addChange, blockAttrs, blockLabel, blockSource, blockText, checkStructure, contentSpan, copyBlock, data, displayStructure, docBlockOrg, escapeAttr, escapeHtml, getCodeItems, getId, greduce, last, numSpan, orgDoc, orgEditing, parent, parseOrgDoc, parseOrgMode, parseYaml, plainEditing, posFor, set$, siblings;
     parseOrgMode = Org.parseOrgMode, orgDoc = Org.orgDoc, Source = Org.Source, Results = Org.Results, Headline = Org.Headline, SimpleMarkup = Org.SimpleMarkup, Fragment = Org.Fragment;
     orgDoc = DocOrg.orgDoc, getCodeItems = DocOrg.getCodeItems, blockSource = DocOrg.blockSource, docBlockOrg = DocOrg.blockOrg, ParsedCodeBlock = DocOrg.ParsedCodeBlock, parseYaml = DocOrg.parseYaml;
-    last = Editor.last, DataStore = Editor.DataStore, DataStoreEditingOptions = Editor.DataStoreEditingOptions, blockText = Editor.blockText, posFor = Editor.posFor, escapeHtml = Editor.escapeHtml, copy = Editor.copy, LeisureEditCore = Editor.LeisureEditCore, set$ = Editor.set$;
+    last = Editor.last, DataStore = Editor.DataStore, DataStoreEditingOptions = Editor.DataStoreEditingOptions, blockText = Editor.blockText, posFor = Editor.posFor, escapeHtml = Editor.escapeHtml, copyBlock = Editor.copyBlock, LeisureEditCore = Editor.LeisureEditCore, set$ = Editor.set$;
     orgEditing = null;
     plainEditing = null;
     data = null;
