@@ -58,6 +58,7 @@
 }
 #plainEditor {
     white-space: pre;
+    font-family: monospace;
     height: calc(100% - 3.5em);
     margin-bottom: 0.5em;
     border: solid black 2px;
