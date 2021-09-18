@@ -59,7 +59,6 @@
  * [@dtao](https://github.com/dtao)
  */
 
-define([], (function(context) {
   /**
    * Wraps an object and returns a {@link Sequence}. For `null` or `undefined`,
    * simply returns an empty sequence (see {@link Lazy.strict} for a stricter
@@ -90,7 +89,7 @@ define([], (function(context) {
    * Lazy()                // sequence: []
    * Lazy(null)            // sequence: []
    */
-  function Lazy(source) {
+  export function Lazy(source) {
     if (source instanceof Array) {
       return new ArrayWrapper(source);
     } else if (typeof source === "string") {
@@ -5795,9 +5794,6 @@ define([], (function(context) {
 //  } else {
 //    context.Lazy = Lazy;
 //  }
-    return {_: Lazy};
-
-}(this)));
 
 //if (!(typeof module === "object" && module && module.exports === this)) {
 //    (typeof window != 'undefined' ? window : global).Lazy = this.Lazy;

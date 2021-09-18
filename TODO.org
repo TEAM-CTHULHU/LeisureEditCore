@@ -1,3 +1,11 @@
+* Updating Lounge
+1. Rename project to Lounge
+2. Fix files to compile in new CoffeeScript version
+   - [ ] Fingertree
+3. Convert to modern import/export
+5. Fix problems
+6. Write tests
+7. Gradually convert to Typescript
 * To be done
 ** better updating in the exmaple
 - only render necessary blocks
