@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "noImplicitAny": false,
+        "removeComments": false,
+        "preserveConstEnums": true,
+        "sourceMap": true,
+        "baseUrl": ".",
+        "target": "es2020",
+        "module": "es2020",
+        "lib": ["es2020", "dom", "ScriptHost"],
+        "allowSyntheticDefaultImports": true,
+        "outDir": "build"
+    },
+    "files": [
+        "domCursor.ts"
+    ]
+}
