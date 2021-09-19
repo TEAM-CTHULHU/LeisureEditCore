@@ -14,15 +14,17 @@
     </head>
     <body>
         <div id="editorLayout">
-            Rendered text (you can edit text below)<br>
+            <div>Rendered text (you can edit text below)</div>
             <div id="fancyEditor" class="editor"></div>
             <div class='status-holder'><span id='orgStatus'></span></div>
         </div>
-        <div id="sourceLayout">
-            Source (you can edit text below)<br>
-            <div id="plainEditor"></div>
-            <div class='status-holder'><span id='plainStatus'></span></div>
+        <div id='diag'>
+            <div id="sourceLayout">
+                <div>Source (you can edit text below)</div>
+                <div id="plainEditor"></div>
+                <div class='status-holder'><span id='plainStatus'></span></div>
+            </div>
+            <div id="blocksLayout"><div id="blocks"></div></div>
         </div>
-        <div id="blocksLayout"><div id="blocks"></div></div>
     </body>
 </html>

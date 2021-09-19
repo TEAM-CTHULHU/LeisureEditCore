@@ -1,16 +1,22 @@
 // DOMCursor
 // =========
 // Copyright (C) 2014, 2021, Bill Burdick, Roy Riggs, TEAM CTHULHU
+if (!window.CaretPosition)
+    window.CaretPosition = (class {
+    });
 export class DOMCursor {
     constructor(node, pos, filter) {
+        if (pos instanceof Function)
+            filter = pos;
         if (node instanceof Range) {
-            if (typeof pos !== 'number') {
-                if (pos instanceof Function) {
-                    filter = pos;
-                }
+            if (typeof pos !== 'number')
                 pos = node.startOffset;
-            }
             node = node.startContainer;
+        }
+        else if (node instanceof CaretPosition) {
+            if (typeof pos !== 'number')
+                pos = node.offset;
+            node = node.offsetNode;
         }
         this.node = node;
         this.pos = (pos || 0);
@@ -34,6 +40,12 @@ export class DOMCursor {
         const l2 = Math.floor(pos2.left);
         return (r1 !== r2 || l1 !== l2) && (r2 < l1 || r1 < l2 || ((r1 < r2) === (l1 < l2) && (r1 > r2) === (l1 > l2)));
     }
+    static getBoundingRect(node) {
+        if (node instanceof HTMLElement)
+            return node.getBoundingClientRect();
+        spareRange.selectNode(node);
+        return spareRange.getBoundingClientRect();
+    }
     static getTextPosition(textNode, offset) {
         var r;
         if (offset < textNode.length) {
@@ -43,7 +55,7 @@ export class DOMCursor {
             if (!r || (r.width === 0 && r.height === 0)) {
                 spareRange.selectNodeContents(textNode.parentNode);
                 if (spareRange.getClientRects().length === 0) {
-                    r = textNode.parentNode.getBoundingClientRect();
+                    r = DOMCursor.getBoundingRect(textNode);
                 }
             }
         }
@@ -119,12 +131,8 @@ export class DOMCursor {
     }
     isDomCaretTextPosition() {
         const p = this.textPosition();
-        if (document.caretPositionFromPoint) {
-            const pos = document.caretPositionFromPoint(p.left, p.top);
-            return pos.offsetNode === this.node && pos.offset === this.pos;
-        }
-        const r = document.caretRangeFromPoint(p.left, p.top);
-        return r.startContainer === this.node && r.startOffset === this.pos;
+        const { node, offset } = DOMCursor.caretPos(p.left, p.top);
+        return node === this.node && offset === this.pos;
     }
     // **Character** returns the character at the position
     character() {
@@ -350,71 +358,54 @@ export class DOMCursor {
     }
     // **getText** gets all of the text at or after the cursor (useful with filtering; see above)
     getText() {
-        var n, t;
-        n = this.mutable().firstText();
-        if (n.isEmpty()) {
+        let t;
+        let n = this.mutable().firstText();
+        if (n.isEmpty())
             return '';
+        t = n.node.data.substring(n.pos);
+        while (!(n = n.next()).isEmpty()) {
+            if (n.type === 'text')
+                t += n.node.data;
         }
-        else {
-            t = n.node.data.substring(n.pos);
-            while (!(n = n.next()).isEmpty()) {
-                if (n.type === 'text') {
-                    t += n.node.data;
-                }
-            }
-            if (t.length) {
-                while (n.type !== 'text') {
-                    n.prev();
-                }
-                n = n.newPos(n.node, n.node.length);
-                while (n.pos > 0 && reject(n.filter(n))) {
-                    n.pos--;
-                }
-                return t.substring(0, t.length - n.node.length + n.pos);
-            }
-            else {
-                return '';
-            }
+        if (t.length) {
+            while (n.type !== 'text')
+                n.prev();
+            n = n.newPos(n.node, n.node.length);
+            while (n.pos > 0 && reject(n.filter(n)))
+                n.pos--;
+            return t.substring(0, t.length - n.node.length + n.pos);
         }
+        return '';
     }
     // **getTextTo** gets all of the text at or after the cursor (useful with filtering; see above)
     getTextTo(other) {
-        var n, t;
-        n = this.mutable().firstText();
-        if (n.isEmpty()) {
+        let t;
+        let n = this.mutable().firstText();
+        if (n.isEmpty())
             return '';
-        }
-        else {
-            t = n.node.data.substring(n.pos);
-            if (n.node !== other.node) {
-                while (!(n = n.next()).isEmpty()) {
-                    if (n.type === 'text') {
-                        t += n.node.data;
-                    }
-                    if (n.node === other.node) {
-                        break;
-                    }
-                }
+        t = n.node.data.substring(n.pos);
+        if (n.node !== other.node) {
+            while (!(n = n.next()).isEmpty()) {
+                if (n.type === 'text')
+                    t += n.node.data;
+                if (n.node === other.node)
+                    break;
             }
-            if (t.length) {
-                while (n.type !== 'text') {
-                    n.prev();
-                }
-                if (n.node === other.node) {
-                    n = n.newPos(n.node, other.pos);
-                }
-                else {
-                    n = n.newPos(n.node, n.node.length);
-                }
-                while (n.pos > 0 && reject(n.filter(n))) {
-                    n.pos--;
-                }
-                return t.substring(0, t.length - n.node.length + n.pos);
+        }
+        if (t.length) {
+            while (n.type !== 'text')
+                n.prev();
+            if (n.node === other.node) {
+                n = n.newPos(n.node, other.pos);
             }
             else {
-                return '';
+                n = n.newPos(n.node, n.node.length);
             }
+            while (n.pos > 0 && reject(n.filter(n)))
+                n.pos--;
+            return t.substring(0, t.length - n.node.length + n.pos);
         }
+        return '';
     }
     char() { return this.type === 'text' && this.node.data[this.pos]; }
     // **isNL** returns whether the current character is a newline
@@ -427,95 +418,77 @@ export class DOMCursor {
     moveToNextStart() { return this.next().moveToStart(); }
     // **moveToEnd** moves to the textual end the node (1 before the end if the node
     // ends in a newline)
-    moveToEnd() {
-        var end;
-        end = this.node.length - (this.endsInNL() ? 1 : 0);
-        return this.newPos(this.node, end);
-    }
+    moveToEnd() { return this.newPos(this.node, this.node.length - (this.endsInNL() ? 1 : 0)); }
     // **moveToPrevEnd** moves to the textual end the previous node (1 before
     // the end if the node ends in a newline)
     moveToPrevEnd() { return this.prev().moveToEnd(); }
-    // **forwardWhile** moves forward until the given function is false or 'found',
-    // returning the previous position if the function is false or the current
-    // position if the function is 'found'
+    /** moves forward until the given function returns false or 'found'.
+     *    if false, return the previous position
+     *    if 'found', return the current position
+     */
     forwardWhile(test) {
-        var n, prev, t;
-        prev = n = this.immutable();
-        while (n = n.forwardChar()) {
-            if (n.isEmpty() || !(t = test(n))) {
+        var t;
+        let dc = this.immutable();
+        let prev = dc;
+        while (dc = dc.forwardChar()) {
+            if (dc.isEmpty() || !(t = test(dc)))
                 return prev;
-            }
-            if (t === 'found') {
-                return n;
-            }
-            prev = n;
+            if (t === 'found')
+                return dc;
+            prev = dc;
         }
     }
-    // **checkToEndOfLine** checks whether a condition is true until the EOL
+    /** checks whether a condition is true until the EOL */
     checkToEndOfLine(test) {
-        var n, tp;
-        n = this.immutable();
-        tp = n.textPosition();
-        while (!n.isEmpty() && (test(n))) {
-            if (DOMCursor.differentLines(tp, n.textPosition())) {
+        let dc = this.immutable();
+        const tp = dc.textPosition();
+        while (!dc.isEmpty() && (test(dc))) {
+            if (DOMCursor.differentLines(tp, dc.textPosition()))
                 return true;
-            }
-            n = n.forwardChar();
+            dc = dc.forwardChar();
         }
-        return n.isEmpty();
+        return dc.isEmpty();
     }
     // **checkToStartOfLine** checks whether a condition is true until the EOL
     checkToStartOfLine(test) {
-        var n, tp;
-        n = this.immutable();
-        tp = n.textPosition();
-        while (!n.isEmpty() && (test(n))) {
-            if (DOMCursor.differentLines(tp, n.textPosition())) {
+        let dc = this.immutable();
+        const tp = dc.textPosition();
+        while (!dc.isEmpty() && (test(dc))) {
+            if (DOMCursor.differentLines(tp, dc.textPosition()))
                 return true;
-            }
-            n = n.backwardChar();
+            dc = dc.backwardChar();
         }
-        return n.isEmpty();
+        return dc.isEmpty();
     }
     // **endOfLine** moves to the end of the current line
     endOfLine() {
-        var tp;
-        tp = this.textPosition();
-        return this.forwardWhile(function (n) {
-            return !DOMCursor.differentLines(tp, n.textPosition());
-        });
+        const tp = this.textPosition();
+        return this.forwardWhile(n => !DOMCursor.differentLines(tp, n.textPosition()));
     }
     // **forwardLine** moves to the next line, trying to keep the current screen pixel column.  Optionally takes a goalFunc that takes the position's screen pixel column as input and returns -1, 0, or 1 from comparing the input to the an goal column
     forwardLine(goalFunc) {
-        var line, tp;
-        if (!goalFunc) {
-            goalFunc = function () {
-                return -1;
-            };
-        }
-        line = 0;
-        tp = this.textPosition();
-        return this.forwardWhile(function (n) {
-            var pos;
-            pos = n.textPosition();
+        let line = 0;
+        let tp = this.textPosition();
+        if (!goalFunc)
+            goalFunc = _n => -1;
+        return this.forwardWhile(n => {
+            const pos = n.textPosition();
             if (DOMCursor.differentLines(tp, pos)) {
                 tp = pos;
                 line++;
             }
-            if (line === 1 && goalFunc(pos.left + 2) > -1) {
+            if (line === 1 && goalFunc(pos.left + 2) > -1)
                 return 'found';
-            }
-            else {
-                return line !== 2;
-            }
+            return line !== 2;
         });
     }
     // **backwardWhile** moves backward until the given function is false or 'found',
     // returning the previous position if the function is false or the current
     // position if the function is 'found'
     backwardWhile(test) {
-        var n, prev, t;
-        prev = n = this.immutable();
+        let t;
+        let n = this.immutable();
+        let prev = n;
         while (n = n.backwardChar()) {
             if (n.isEmpty() || !(t = test(n))) {
                 return prev;
@@ -528,60 +501,47 @@ export class DOMCursor {
     }
     // **endOfLine** moves to the end of the current line
     startOfLine() {
-        var tp;
-        tp = this.textPosition();
-        return this.backwardWhile(function (n) {
-            return !DOMCursor.differentLines(tp, n.textPosition());
-        });
+        const tp = this.textPosition();
+        return this.backwardWhile(n => !DOMCursor.differentLines(tp, n.textPosition()));
     }
-    differentPosition(c) { return DOMCursor.differentPosition(this.textPosition(), c.textPosition()); }
-    differentLines(c) { return DOMCursor.differentLines(this.textPosition(), c.textPosition()); }
+    differentPosition(c) {
+        return DOMCursor.differentPosition(this.textPosition(), c.textPosition());
+    }
+    differentLines(c) {
+        return DOMCursor.differentLines(this.textPosition(), c.textPosition());
+    }
     // **backwardLine** moves to the previous line, trying to keep the current screen pixel column.  Optionally takes a goalFunc that takes the position's screen pixel column as input and returns -1, 0, or 1 from comparing the input to an internal goal column
     backwardLine(goalFunc) {
-        var line, tp;
-        if (!goalFunc) {
-            goalFunc = function () {
-                return -1;
-            };
-        }
-        tp = this.textPosition();
-        line = 0;
-        return (this.backwardWhile(function (n) {
-            var pos, ref;
-            pos = n.textPosition();
+        let tp = this.textPosition();
+        let line = 0;
+        if (!goalFunc)
+            goalFunc = _n => -1;
+        return (this.backwardWhile(n => {
+            const pos = n.textPosition();
+            let goal;
             if (DOMCursor.differentLines(tp, pos)) {
                 tp = pos;
                 line++;
             }
-            if (line === 1 && ((ref = goalFunc(n.textPosition().left - 2)) === (-1) || ref === 0)) {
+            if (line === 1 && ((goal = goalFunc(n.textPosition().left - 2)) === (-1) || goal === 0)) {
                 return 'found';
             }
-            else {
-                return line !== 2;
-            }
+            return line !== 2;
         })).adjustBackward();
     }
     adjustBackward() {
-        var p;
-        p = this.textPosition();
-        return this.backwardWhile(function (n) {
-            return !DOMCursor.differentPosition(p, n.textPosition());
-        });
+        const p = this.textPosition();
+        return this.backwardWhile(n => !DOMCursor.differentPosition(p, n.textPosition()));
     }
     forwardChar() {
-        var n;
-        if (this.pos + 1 <= this.node.length) {
-            return this.newPos(this.node, this.pos + 1);
+        let n = this;
+        if (this.pos + 1 <= this.node.length)
+            this.newPos(this.node, this.pos + 1);
+        while (!(n = n.next()).isEmpty()) {
+            if (n.node.length !== 0)
+                break;
         }
-        else {
-            n = this;
-            while (!(n = n.next()).isEmpty()) {
-                if (n.node.length !== 0) {
-                    break;
-                }
-            }
-            return n;
-        }
+        return n;
     }
     boundedForwardChar() {
         const n = this.save().forwardChar();
@@ -601,9 +561,9 @@ export class DOMCursor {
     }
     // **show** scroll the position into view.  Optionally takes a rectangle representing a toolbar at the top of the page (sorry, this is a bit limited at the moment)
     show(topRect) {
-        var p, top;
-        if (p = this.textPosition()) {
-            top = (topRect != null ? topRect.width : void 0) && topRect.top === 0 ? topRect.bottom : 0;
+        const p = this.textPosition();
+        if (p) {
+            const top = (topRect != null ? topRect.width : 0) && topRect.top === 0 ? topRect.bottom : 0;
             if (p.bottom > window.innerHeight) {
                 window.scrollBy(0, p.bottom - window.innerHeight);
             }
@@ -687,6 +647,14 @@ export class DOMCursor {
     }
 }
 DOMCursor.debug = false;
+DOMCursor.caretPos = document.caretPositionFromPoint
+    ? (x, y) => {
+        const pos = document.caretPositionFromPoint(x, y);
+        return { node: pos.offsetNode, offset: pos.offset };
+    } : (x, y) => {
+    const pos = document.caretRangeFromPoint(x, y);
+    return { node: pos.startContainer, offset: pos.startOffset };
+};
 class EmptyDOMCursor extends DOMCursor {
     constructor() { super(null); }
     moveCaret() { return this; }
@@ -792,28 +760,26 @@ let emptyRect = {
 function chooseUpper(r1, r2) { return r1.top < r2.top; }
 function chooseLower(r1, r2) { return r1.top > r2.top; }
 function getClientRect(r) {
-    var comp, i, len, rect, rects, result;
-    rects = r.getClientRects();
-    if (rects.length === 1) {
+    var comp, i, len, rect, result;
+    const rects = r.getClientRects();
+    if (rects.length === 1)
         return rects[0];
-    }
-    else if (rects.length === 2) {
+    if (rects.length === 2) {
         result = rects[0];
         //comp = if r.startContainer.data[r.startOffset] == '\n' then chooseUpper
-        comp = r.startContainer.data[r.startOffset] === '\n' && r.startOffset > 0 && r.startContainer.data[r.startOffset] !== '\n' ? chooseUpper : chooseLower;
+        comp = r.startContainer.data[r.startOffset] === '\n'
+            && r.startOffset > 0
+            && r.startContainer.data[r.startOffset] !== '\n' ? chooseUpper
+            : chooseLower;
         for (i = 0, len = rects.length; i < len; i++) {
             rect = rects[i];
-            if (comp(rect, result)) {
+            if (comp(rect, result))
                 result = rect;
-            }
         }
         return result;
     }
-    else {
-        return emptyRect;
-    }
+    return emptyRect;
 }
-;
 DOMCursor.MutableDOMCursor = MutableDOMCursor;
 DOMCursor.emptyDOMCursor = new EmptyDOMCursor();
 DOMCursor.debug = false;

@@ -448,6 +448,13 @@ Events:
           pos = node.pos
           node = node.node
         @options.domCursor(node, pos)
+      makeElementVisible: (node)->
+        r = DOMCursor.getBoundingRect(node)
+        view = @node[0].getBoundingClientRect()
+        if r.top < view.top
+          @node[0].scrollTop -= view.top - r.top
+        else if r.bottom > view.bottom
+          @node[0].scrollTop += r.bottom - view.bottom
       domCursorForText: (node, pos, parent)->
         c = @domCursor node, pos
           .filterTextNodes()
@@ -620,9 +627,9 @@ Events:
           useEvent e
           oe = e.originalEvent
           oe.dataTransfer.dropEffect = 'move'
-          r = document.caretRangeFromPoint oe.clientX, oe.clientY
-          dropPos = @domCursor(r.startContainer, r.startOffset).moveCaret()
-          dropContainer = @domCursor @options.getContainer(r.startContainer), 0
+          r = DOMCursor.caretPos oe.clientX, oe.clientY
+          dropPos = @domCursor(r.node, r.offset).moveCaret()
+          dropContainer = @domCursor @options.getContainer(r.node), 0
           blockId = @options.idForNode dropContainer.node
           offset = dropContainer.countChars dropPos
           insertText = oe.dataTransfer.getData('text/plain')
@@ -729,9 +736,9 @@ Events:
             s.extend r2.startContainer, r2.startOffset
             e.preventDefault()
       getAdjustedCaretRange: (e, returnUnchanged) ->
-        r = document.caretRangeFromPoint e.clientX, e.clientY
-        r2 = @domCursor(r).backwardChar().range()
-        rect1 = r.getBoundingClientRect()
+        {node, offset} = DOMCursor.caretPos e.clientX, e.clientY
+        r2 = @domCursor(node, offset).backwardChar().range()
+        rect1 = DOMCursor.getBoundingRect(node)
         rect2 = r2.getBoundingClientRect()
         if rect1.top == rect2.top && rect1.bottom == rect2.bottom && rect2.left < rect1.left && e.clientX <= (rect1.left + rect2.left) / 2
           r2
@@ -832,7 +839,8 @@ Events:
         if pos.isEmpty() then pos = pos.prev()
         pos = @domCursorForCaret()
         pos.moveCaret()
-        (if pos.node.nodeType == pos.node.TEXT_NODE then pos.node.parentNode else pos.node).scrollIntoViewIfNeeded()
+        #(if pos.node.nodeType == pos.node.TEXT_NODE then pos.node.parentNode else pos.node).scrollIntoView()
+        @makeElementVisible pos.node
         @trigger 'moved', this
       moveForward: ->
         sel = getSelection()

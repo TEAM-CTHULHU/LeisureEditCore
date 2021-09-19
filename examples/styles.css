@@ -1,6 +1,21 @@
+body {
+    display: grid;
+    grid-template-columns: 50% 50%;
+    position: absolute;
+    height: 100%;
+    overflow: hidden;
+    width: 100%;
+    margin: 0;
+    padding: 0.5ex;
+}
+#diag {
+    grid-template-rows: 50% 50%;
+    overflow: hidden;
+    height: calc(100% - 10px);
+}
 .editor {
     white-space: pre-wrap;
-    height: calc(100% - 3.5em);
+    height: calc(100% - 2.5em - 10px);
     overflow: auto;
     padding: 5px;
     -webkit-user-select: none;
@@ -9,10 +24,11 @@
 }
 
 #editorLayout {
-    height: 100%;
-    /*width: calc(50% - 10px);*/
-    /* display: inline-block; */
+    height: calc(100% - 10px);
     vertical-align: top;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 [data-type] {
@@ -46,20 +62,28 @@
 }
 
 .status-holder {
-    height: 1em;
+    height: 1.5em;
     border: solid black 2px;
 }
 
+#fancyEditor {
+    flex-grow: 1;
+    overflow: auto;
+}
+
 #sourceLayout {
-    /*width: calc(50% - 10px);*/
-    /* display: inline-block; */
-    height: calc(60% - 5px);
+    height: 60%;
     vertical-align: top;
+    width: calc(100% - 10px);
+    overflow: hidden;
+}
+#sourceLayout > div:first-child {
+    height: 1em;
 }
 #plainEditor {
     white-space: pre;
     font-family: monospace;
-    height: calc(100% - 3.5em);
+    height: calc(100% - 3em - 30px);
     margin-bottom: 0.5em;
     border: solid black 2px;
     padding: 5px;
@@ -71,24 +95,18 @@
     display: inline-block;
 }
 #blocksLayout {
-    /*width: calc(50% - 10px);*/
-    /* display: inline-block; */
-    height: calc(40% - 5px);
     vertical-align: top;
     padding-top: 0.5em;
+    width: calc(100% - 10px);
+    height: calc(40% - 0.5em);
 }
 #blocks {
     white-space: pre;
-    height: calc(100% - 1em);
     border: solid rgb(230, 173, 205) 2px;
     padding: 5px;
     overflow: auto;
     white-space: pre;
-}
-body {
-    column-count: 2;
-    -moz-column-count: 2;
-    -webkit-column-count: 2;
+    height: calc(100% - 14px);
 }
 .err {
     color: red;

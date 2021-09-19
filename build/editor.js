@@ -709,6 +709,17 @@ export var LeisureEditCore = class LeisureEditCore extends Observable {
     return this.options.domCursor(node, pos);
   }
 
+  makeElementVisible(node) {
+    var r, view;
+    r = DOMCursor.getBoundingRect(node);
+    view = this.node[0].getBoundingClientRect();
+    if (r.top < view.top) {
+      return this.node[0].scrollTop -= view.top - r.top;
+    } else if (r.bottom > view.bottom) {
+      return this.node[0].scrollTop += r.bottom - view.bottom;
+    }
+  }
+
   domCursorForText(node, pos, parent) {
     var c;
     c = this.domCursor(node, pos).filterTextNodes().firstText();
@@ -1009,9 +1020,9 @@ export var LeisureEditCore = class LeisureEditCore extends Observable {
       useEvent(e);
       oe = e.originalEvent;
       oe.dataTransfer.dropEffect = 'move';
-      r = document.caretRangeFromPoint(oe.clientX, oe.clientY);
-      dropPos = this.domCursor(r.startContainer, r.startOffset).moveCaret();
-      dropContainer = this.domCursor(this.options.getContainer(r.startContainer), 0);
+      r = DOMCursor.caretPos(oe.clientX, oe.clientY);
+      dropPos = this.domCursor(r.node, r.offset).moveCaret();
+      dropContainer = this.domCursor(this.options.getContainer(r.node), 0);
       blockId = this.options.idForNode(dropContainer.node);
       offset = dropContainer.countChars(dropPos);
       insertText = oe.dataTransfer.getData('text/plain');
@@ -1167,10 +1178,10 @@ export var LeisureEditCore = class LeisureEditCore extends Observable {
   }
 
   getAdjustedCaretRange(e, returnUnchanged) {
-    var r, r2, rect1, rect2;
-    r = document.caretRangeFromPoint(e.clientX, e.clientY);
-    r2 = this.domCursor(r).backwardChar().range();
-    rect1 = r.getBoundingClientRect();
+    var node, offset, r2, rect1, rect2;
+    ({node, offset} = DOMCursor.caretPos(e.clientX, e.clientY));
+    r2 = this.domCursor(node, offset).backwardChar().range();
+    rect1 = DOMCursor.getBoundingRect(node);
     rect2 = r2.getBoundingClientRect();
     if (rect1.top === rect2.top && rect1.bottom === rect2.bottom && rect2.left < rect1.left && e.clientX <= (rect1.left + rect2.left) / 2) {
       return r2;
@@ -1344,7 +1355,8 @@ export var LeisureEditCore = class LeisureEditCore extends Observable {
     }
     pos = this.domCursorForCaret();
     pos.moveCaret();
-    (pos.node.nodeType === pos.node.TEXT_NODE ? pos.node.parentNode : pos.node).scrollIntoViewIfNeeded();
+    //(if pos.node.nodeType == pos.node.TEXT_NODE then pos.node.parentNode else pos.node).scrollIntoView()
+    this.makeElementVisible(pos.node);
     return this.trigger('moved', this);
   }
 
