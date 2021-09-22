@@ -9,9 +9,11 @@
         "module": "es2020",
         "lib": ["es2020", "dom", "ScriptHost"],
         "allowSyntheticDefaultImports": true,
-        "outDir": "build"
+        "outDir": "build",
+        "rootDirs": [".", "build"]
     },
     "files": [
-        "domCursor.ts"
+        "domCursor.ts",
+        "editor-ts.ts"
     ]
 }

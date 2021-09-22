@@ -1,11 +1,27 @@
 * Updating Lounge
 1. Rename project to Lounge
-2. Fix files to compile in new CoffeeScript version
-   - [ ] Fingertree
-3. Convert to modern import/export
-5. Fix problems
-6. Write tests
-7. Gradually convert to Typescript
+2. Fix problems
+3. Write tests
+4. Gradually convert to Typescript (move from compiled JS to TS)
+   1. [X] domCursor
+   2. [-] editor
+   3. [ ] fingertree
+5. Promote org-mode code so it's no longer "example" code
+   1. Remove lazy from example
+   2. Convert to Typescript
+      1. [ ] docOrg
+      2. [ ] example
+      3. [ ] org
+6. Update annotations, so views can persist across state changes
+   1. Allows more practical embedding of Codemirror for src blocks
+7. Use [[https://rollupjs.org/guide/en/][Rollup]] for bundling ([[https://medium.com/@PepsRyuu/why-i-use-rollup-and-not-webpack-e3ab163f4fd3][why]])
+8. generalize rerendering to tree structure that allows documents
+   1. Store already keeps clones so it is immutable at any given time
+   2. parse document to create blocks
+      1. documents should be the source of truth for their blocks
+   3. allow creating blocks outside a document
+      1. An object tree that gets rendered
+      2. Nodes can contain documents
 * To be done
 ** better updating in the exmaple
 - only render necessary blocks

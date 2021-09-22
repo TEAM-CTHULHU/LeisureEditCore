@@ -88,7 +88,7 @@
 // 3. This notice may not be removed or altered from any source distribution.
 
 /** an HTMLElement or a Text element */
-type node = HTMLElement & {
+export type node = HTMLElement & {
     data?: any,
     length?: number,
     getBoundingClientRect?(): DOMRect,
@@ -696,7 +696,7 @@ export class DOMCursor {
     forwardChar() {
         let n: DOMCursor = this;
 
-        if (this.pos + 1 <= this.node.length) this.newPos(this.node, this.pos + 1)
+        if (this.pos + 1 <= this.node.length) return this.newPos(this.node, this.pos + 1)
         while (!(n = n.next()).isEmpty()) {
             if (n.node.length !== 0) break
         }

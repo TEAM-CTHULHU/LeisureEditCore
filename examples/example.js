@@ -3,7 +3,7 @@
 // =========================================
 // This extends Data store and pushes parsing into the store instead of keeping
 // it in the editing options and options delegate it to the store.
-var DataStore, DataStoreEditingOptions, FancyEditing, Fragment, Headline, LeisureEditCore, OrgEditing, ParsedCodeBlock, PlainEditing, Results, SimpleMarkup, Source, addChange, blockAttrs, blockLabel, blockSource, blockText, checkStructure, contentSpan, copyBlock, data, displayStructure, docBlockOrg, escapeAttr, escapeHtml, getCodeItems, getId, greduce, last, numSpan, orgDoc, orgEditing, parent, parseOrgDoc, parseOrgMode, parseYaml, plainEditing, posFor, set$, siblings;
+var $, DataStore, DataStoreEditingOptions, FancyEditing, Fragment, Headline, LeisureEditCore, OrgEditing, ParsedCodeBlock, PlainEditing, Results, SimpleMarkup, Source, addChange, blockAttrs, blockLabel, blockSource, blockText, checkStructure, contentSpan, copyBlock, data, displayStructure, docBlockOrg, escapeAttr, escapeHtml, getCodeItems, getId, greduce, last, numSpan, orgDoc, orgEditing, parent, parseOrgDoc, parseOrgMode, parseYaml, plainEditing, posFor, set$, siblings;
 
 import * as Org from './org.js';
 
@@ -24,6 +24,9 @@ import * as Editor from '../build/editor.js';
 
 ({last, DataStore, DataStoreEditingOptions, blockText, posFor, escapeHtml, copyBlock, LeisureEditCore, set$} = Editor);
 
+$ = Editor.$;
+
+//set$ $, (o)-> o instanceof $
 orgEditing = null;
 
 plainEditing = null;
@@ -598,10 +601,6 @@ checkStructure = function(block, bad) {
     return '';
   }
 };
-
-set$($, function(o) {
-  return o instanceof $;
-});
 
 $(document).ready(function() {
   var editor;

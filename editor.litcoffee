@@ -131,15 +131,14 @@ Create a LeisureEditCore object like this: `new LeisureEditCore editorElement, o
 convert text to a list of block objects (see below).  See
 BasicEditingOptions and DataStoreEditingOptions for more info.
 
+    import {Set} from './immutable-4.0.0-rc.15.js'
     import {DOMCursor} from './domCursor.js'
     import {FingerTree} from './fingertree.js'
+    import {Observable, BasicEditingOptionsNew, spaces, sameCharacter, computeNewStructure,
+            copyBlock, DataStore, FeatherJQ, $, is$} from './editor-ts.js'
+    export {copyBlock, DataStore, FeatherJQ, $, is$, set$} from './editor-ts.js'
 
-    {
-      selectRange,
-    } = DOMCursor
-    {
-      Set
-    } = Immutable
+    {selectRange} = DOMCursor
     imbeddedBoundary = /.\b./
     maxLastKeys = 4
     BS = 8
@@ -232,155 +231,170 @@ course.)
 
     idCounter = 0
 
-Observable class
-================
+#    export class Observable
+#      constructor: ->
+#        @listeners = {}
+#        @suppressingTriggers = false
+#      on: (type, callback)->
+#        if typeof type == 'object'
+#          for type, callback of type
+#            @on type callback
+#        else
+#          if !@listeners[type] then @listeners[type] = []
+#          @listeners[type].push callback
+#        this
+#      off: (type, callback)->
+#        if typeof type == 'object'
+#          for callbackType, callback of type
+#            @off callbackType, callback
+#        else
+#          if @listeners[type]
+#            @listeners[type] = @listeners[type].filter (l)-> l != callback
+#        this
+#      trigger: (type, args...)->
+#        if !@suppressingTriggers
+#          for listener in @listeners[type] || []
+#            listener args...
+#      suppressTriggers: (func)->
+#        oldSuppress = @suppressingTriggers
+#        @suppressingTriggers = true
+#        try
+#          func()
+#        finally
+#          @suppressingTriggers = oldSuppress
+#
+#    readyPromise = new Promise (accept, reject)->
+#      if document.readyState == 'interactive' then accept null
+#      else
+#        document.onreadystatechange = ()->
+#          if document.readyState == 'interactive' then accept null
+#    
+#    ready = (func)-> readyPromise.then func
+#
+#FeatherJQ class
+#===============
+#A featherweight JQuery replacement.  Users can use set$ to make it use
+#the real jQuery, like this: `set$($, (obj)-> obj instanceof $)`
+#
+#    export class FeatherJQ extends Array
+#      constructor: (specs...)->
+#        results = []
+#        results.__proto__ = FeatherJQ.prototype
+#        for spec in specs
+#          results.pushResult spec
+#        return results
+#      find: (sel)->
+#        results = $()
+#        for node in this
+#          if node.querySelectorAll?
+#            for result in node.querySelectorAll(sel)
+#              results.push result
+#        results
+#      attr: (name, value)->
+#        if value?
+#          for node in this
+#            node.setAttribute name, value
+#          this
+#        else this[0]?getAttribute name
+#      prop: (name, value)->
+#        if value?
+#          for node in this
+#            node[name] = value
+#          this
+#        else this[0]?[name]
+#      closest: (sel)->
+#        result = $()
+#        for node in this
+#          if n = (if node.closest? then node else node.parentNode).closest sel
+#            result.push n
+#        result
+#      is: (sel)->
+#        for node in this
+#          if node.matches? sel then return true
+#        false
+#      parent: ->
+#        result = $()
+#        for node in this
+#          if p = node.parentNode then result.push p
+#        result
+#      data: (key, value)->
+#        if !key then getUserData this[0], true
+#        else if !value? then getUserData(this[0], true)?[key]
+#        else for node in this
+#          getUserData(node, true)[key] = value
+#          this
+#      on: (evtType, func)->
+#        for node in this
+#          evt = getEvents node
+#          if !evt[evtType]
+#            node.addEventListener evtType, runEvent
+#            evt[evtType] = []
+#          evt[evtType].push func
+#      off: (evtType, func)->
+#        for node in this when events = getEvents(node) && events[evtType]
+#          events = if func then (h for h in events[evtType] when h != func) else []
+#          if !events.length then delete events[evtType]
+#      pushResult: (spec)->
+#        if typeof spec == 'string'
+#          try
+#            @push document.querySelectorAll(spec)...
+#          catch err
+#            div = document.createElement 'div'
+#            div.innerHTML = html
+#            @push div.children...
+#        #else if spec instanceof FeatherJQ then @push spec...
+#        else if typeof spec == 'object' && spec.nodeName then @push spec
+#        else if typeof spec == 'object' && spec.prop then @push spec...
+#        else @push spec
+#      ready: (func)-> ready func
+#      html: (newHtml)->
+#        for node in this
+#          node.innerHTML = newHtml
+#
+#    $func = (args...)-> new FeatherJQ(args...)
+#
+#    export $ = $func
+#
+#    export is$ = (obj)-> obj instanceof FeatherJQ || (obj.prop && obj.attr)
+#
+#    export set$ = (new$, is$Func)->
+#      $ = $func = new$
+#      is$ = is$Func || is$
+#
+#    FJQData = new WeakMap
+#
+#    runEvent = (evt)->
+#      for handler in getEvents(evt.currentTarget) ? []
+#        handler evt
+#      null
+#
+#    getNodeData = (node, create)->
+#      if create || FJQData.has node
+#        if !FJQData.has node then FJQData.set node, {}
+#        FJQData.get node
+#
+#    getDataProperty = (node, prop, create)->
+#      if d = getNodeData node, create
+#        if !d[prop] then d[prop] = {}
+#        d[prop]
+#
+#    getUserData = (node, create)-> if node then getDataProperty node, 'userData', create
+#
+#    getEvents = (node, create)-> getDataProperty node, 'events', create
+#
+#    $.ready = FeatherJQ.ready = ready
+#
+#    $.ajax = FeatherJQ.ajax = ({url, success, data})->
+#      xhr = new XMLHttpRequest
+#      xhr.onreadystatechange = ->
+#          if xhr.readyState == XMLHttpRequest.DONE then success xhr.responseText
+#      xhr.open (if data then 'POST' else 'GET'), url, true
+#      xhr.send data
+#
+#    $.get = FeatherJQ.get = (url, success)-> FeatherJQ.ajax {url, success}
 
-    export class Observable
-      constructor: ->
-        @listeners = {}
-        @suppressingTriggers = false
-      on: (type, callback)->
-        if typeof type == 'object'
-          for type, callback of type
-            @on type callback
-        else
-          if !@listeners[type] then @listeners[type] = []
-          @listeners[type].push callback
-        this
-      off: (type, callback)->
-        if typeof type == 'object'
-          for callbackType, callback of type
-            @off callbackType, callback
-        else
-          if @listeners[type]
-            @listeners[type] = @listeners[type].filter (l)-> l != callback
-        this
-      trigger: (type, args...)->
-        if !@suppressingTriggers
-          for listener in @listeners[type] || []
-            listener args...
-      suppressTriggers: (func)->
-        oldSuppress = @suppressingTriggers
-        @suppressingTriggers = true
-        try
-          func()
-        finally
-          @suppressingTriggers = oldSuppress
-
-FeatherJQ class
-===============
-A featherweight JQuery replacement.  Users can use set$ to make it use
-the real jQuery, like this: `set$($, (obj)-> obj instanceof $)`
-
-    export class FeatherJQ extends Array
-      constructor: (specs...)->
-        results = []
-        results.__proto__ = FeatherJQ.prototype
-        for spec in specs
-          results.pushResult spec
-        return results
-      find: (sel)->
-        results = $()
-        for node in this
-          if node.querySelectorAll?
-            for result in node.querySelectorAll(sel)
-              results.push result
-        results
-      attr: (name, value)->
-        if value?
-          for node in this
-            node.setAttribute name, value
-          this
-        else this[0]?getAttribute name
-      prop: (name, value)->
-        if value?
-          for node in this
-            node[name] = value
-          this
-        else this[0]?[name]
-      closest: (sel)->
-        result = $()
-        for node in this
-          if n = (if node.closest? then node else node.parentNode).closest sel
-            result.push n
-        result
-      is: (sel)->
-        for node in this
-          if node.matches? sel then return true
-        false
-      parent: ->
-        result = $()
-        for node in this
-          if p = node.parentNode then result.push p
-        result
-      data: (key, value)->
-        if !key then getUserData this[0], true
-        else if !value? then getUserData(this[0], true)?[key]
-        else for node in this
-          getUserData(node, true)[key] = value
-          this
-      on: (evtType, func)->
-        for node in this
-          evt = getEvents node
-          if !evt[evtType]
-            node.addEventListener evtType, runEvent
-            evt[evtType] = []
-          evt[evtType].push func
-      off: (evtType, func)->
-        for node in this when events = getEvents(node) && events[evtType]
-          events = if func then (h for h in events[evtType] when h != func) else []
-          if !events.length then delete events[evtType]
-      pushResult: (spec)->
-        if typeof spec == 'string'
-          try
-            @push document.querySelectorAll(spec)...
-          catch err
-            div = document.createElement 'div'
-            div.innerHTML = html
-            @push div.children...
-        #else if spec instanceof FeatherJQ then @push spec...
-        else if typeof spec == 'object' && spec.nodeName then @push spec
-        else if typeof spec == 'object' && spec.prop then @push spec...
-        else @push spec
-
-    export $ = FeatherJQ
-
-    export is$ = (obj)-> obj instanceof FeatherJQ || (obj.prop && obj.attr)
-
-    export set$ = (new$, is$Func)->
-      $ = new$
-      is$ = is$Func || is$
-
-    FJQData = new WeakMap
-
-    runEvent = (evt)->
-      for handler in getEvents(evt.currentTarget) ? []
-        handler evt
-      null
-
-    getNodeData = (node, create)->
-      if create || FJQData.has node
-        if !FJQData.has node then FJQData.set node, {}
-        FJQData.get node
-
-    getDataProperty = (node, prop, create)->
-      if d = getNodeData node, create
-        if !d[prop] then d[prop] = {}
-        d[prop]
-
-    getUserData = (node, create)-> if node then getDataProperty node, 'userData', create
-
-    getEvents = (node, create)-> getDataProperty node, 'events', create
-
-    $.ajax = ({url, success, data})->
-      xhr = new XMLHttpRequest
-      xhr.onreadystatechange = ->
-          if xhr.readyState == XMLHttpRequest.DONE then success xhr.responseText
-      xhr.open (if data then 'POST' else 'GET'), url, true
-      xhr.send data
-
-    $.get = (url, success)-> $.ajax {url, success}
-        
+    detail = (e)-> originalEvent(e).detail
+    originalEvent = (e)-> (e.originalEvent) || e
 
 LeisureEditCore class
 =====================
@@ -394,7 +408,7 @@ Events:
         @node
           .attr 'contenteditable', 'true'
           .attr 'spellcheck', 'false'
-        @node.data().editor = this
+          .data 'editor', this
         @curKeyBinding = @prevKeybinding = null
         @bind()
         @lastKeys = []
@@ -456,10 +470,10 @@ Events:
         else if r.bottom > view.bottom
           @node[0].scrollTop += r.bottom - view.bottom
       domCursorForText: (node, pos, parent)->
-        c = @domCursor node, pos
+        c = @domCursor $(node)[0], pos
           .filterTextNodes()
           .firstText()
-        if parent? then c.filterParent parent else c
+        if parent? then c.filterParent $(parent)[0] else c
       domCursorForTextPosition: (parent, pos, contain)->
         @domCursorForText parent, 0, (if contain then parent)
           .mutable()
@@ -618,14 +632,14 @@ Events:
         @bindKeyboard()
       bindDragAndDrop: ->
         @node.on 'dragover', (e)=>
-          @options.dragOver e.originalEvent
+          @options.dragOver originalEvent e
           true
         @node.on 'dragenter', (e)=>
-          @options.dragEnter  e.originalEvent
+          @options.dragEnter originalEvent e
           true
         @node.on 'drop', (e)=>
           useEvent e
-          oe = e.originalEvent
+          oe = originalEvent e
           oe.dataTransfer.dropEffect = 'move'
           r = DOMCursor.caretPos oe.clientX, oe.clientY
           dropPos = @domCursor(r.node, r.offset).moveCaret()
@@ -657,7 +671,7 @@ Events:
           sel = getSelection()
           if sel.type == 'Range'
             dragRange = @getSelectedBlockRange()
-            clipboard = e.originalEvent.dataTransfer
+            clipboard = originalEvent(e).dataTransfer
             clipboard.setData 'text/html', _.map(sel.getRangeAt(0).cloneContents().childNodes, htmlForNode).join ''
             clipboard.setData 'text/plain', @selectedText sel
             clipboard.effectAllowed = 'copyMove'
@@ -676,7 +690,7 @@ Events:
           useEvent e
           sel = getSelection()
           if sel.type == 'Range'
-            clipboard = e.originalEvent.clipboardData
+            clipboard = originalEvent(e).clipboardData
             clipboard.setData 'text/html', _.map(sel.getRangeAt(0).cloneContents().childNodes, htmlForNode).join ''
             clipboard.setData 'text/plain', @selectedText sel
             @replace e, @getSelectedBlockRange(), ''
@@ -684,15 +698,15 @@ Events:
           useEvent e
           sel = getSelection()
           if sel.type == 'Range'
-            clipboard = e.originalEvent.clipboardData
+            clipboard = originalEvent(e).clipboardData
             clipboard.setData 'text/html', _.map(sel.getRangeAt(0).cloneContents().childNodes, htmlForNode).join ''
             clipboard.setData 'text/plain', @selectedText sel
         @node.on 'paste', (e)=>
           useEvent e
-          @replace e, @getSelectedBlockRange(), e.originalEvent.clipboardData.getData('text/plain'), false
+          @replace e, @getSelectedBlockRange(), originalEvent(e).clipboardData.getData('text/plain'), false
       bindMouse: ->
         @node.on 'mousedown', (e)=>
-          if @lastDragRange && e.originalEvent.detail == 2
+          if @lastDragRange && detail(e) == 2
             @dragRange = @lastDragRange
             console.log "double click"
             start = @domCursor(@dragRange).mutable()
@@ -766,7 +780,8 @@ Events:
             else if (modifyingKey c, e) && !isAlphabetic e
               @char = getEventChar e
               @keyPress e
-        @node.on 'keypress', (e)=> if !e.altKey && !e.metaKey && !e.ctrlKey then @keyPress e
+        @node.on 'keypress', (e)=>
+          if !e.altKey && !e.metaKey && !e.ctrlKey then @keyPress e
       enter: (e)->
         useEvent e
         @replace e, @getSelectedBlockRange(), '\n', false
@@ -816,7 +831,7 @@ Events:
           @options.keyUp()
           @clipboardKey = null
       adjustSelection: (e)->
-        if e.detail == 1 then return
+        if detail(e) == 1 then return
         s = getSelection()
         if s.type == 'Range'
           r = s.getRangeAt 0
@@ -973,720 +988,723 @@ Set html of an element and evaluate scripts so that document.currentScript is pr
 
     isAlphabetic = (e)-> !e.altKey && !e.ctrlKey && !e.metaKey && (64 < eventChar(e) < 91)
 
-BasicEditingOptions class
-=========================
-BasicEditingOptions is an the options base class.
+#BasicEditingOptions class
+#=========================
+#BasicEditingOptions is an the options base class.
+#
+#Events:
+#  `load`: new text was loaded into the editor
+#
+#Hook methods (required)
+#-----------------------
+#
+#`renderBlock(block) -> [html, next]`: render a block (and potentially its children) and return the HTML and the next blockId if there is one
+#
+#  * Block DOM (DOM for a block) must be a single element with the same id as the block.
+#  * Block DOM may contain nested block DOM.
+#  * each block's DOM should have the same id as the block and have a data-block attribute
+#  * non-editable parts of the DOM should have contenteditable=false
+#  * completely skipped parts should be non-editable and have a data-noncontent attribute
+#
+#Properties of BasicEditingOptions
+#---------------------------------
+#* `blocks {id -> block}`: block table
+#* `first`: id of first block
+#* `bindings {keys -> binding(editor, event, selectionRange)}`: a map of bindings (can use LeisureEditCore.defaultBindings)
+#
+#Methods of BasicEditingOptions
+#------------------------------
+#* `getBlock(id) -> block?`: get the current block for id
+#* `getContainer(node) -> Node?`: get block DOM node containing for a node
+#* `getFirst() -> blockId`: get the first block id
+#* `domCursor(node, pos) -> DOMCursor`: return a domCursor that skips over non-content
+#* `keyUp(editor) -> void`: handle keyup after-actions
+#* `topRect() -> rect?`: returns null or the rectangle of a toolbar at the page top
+#* `blockColumn(pos) -> colNum`: returns the start column on the page for the current block
+#* `load(el, text) -> void`: parse text into blocks and replace el's contents with rendered DOM
+#
+#    class BasicEditingOptionsOld extends Observable
+#
+#      renderBlock: (block)-> throw new Error "options.renderBlock(block) is not implemented"
+#
+#Hook methods (optional)
+#-----------------------
+#
+#`simulateCut({html, text})`: The editor calls this when the user hits backspace or delete on selected text.
+#
+#      simulateCut: ({html, text})->
+#
+#`dragEnter(event)`: alter the drag-enter behavior.  If you want to cancel the drag, for
+#instance, call event.preventDefault() and set the dropEffect to 'none'
+#
+#      dragEnter: (event)->
+#        if !event.dataTransfer.getData
+#          useEvent event
+#          event.dropEffect = 'none'
+#
+#`dragOver(event)`: alter the drag-enter behavior.  If you want to cancel the drag, for
+#instance, call event.preventDefault() and set the dropEffect to 'none'
+#
+#      dragOver: (event)->
+#        if !event.dataTransfer.getData
+#          useEvent event
+#          event.dropEffect = 'none'
+#
+#Main code
+#---------
+#
+#      constructor: ->
+#        super()
+#        @changeContext = null
+#        @initData()
+#
+#      setDiagEnabled: (flag)->
+#        #changeAdvice this, flag,
+#        #  renderBlocks: diag: wrapDiag
+#        #  changed: diag: wrapDiag
+#        #if flag then @diag()
+#
+#      diag: -> @trigger 'diag', @editor.verifyAllNodes()
+#
+#      initData: ->
+#
+#`blocks {id -> block}`: block table
+#
+#        @blocks = {}
+#
+#`first`: id of first block
+#
+#        @first = null
+#
+#`getFirst() -> blockId`: get the first block id
+#
+#      getFirst: -> @first
+#      nodeForId: (id)-> $("##{id}")
+#      idForNode: (node)-> $(node).prop 'id'
+#      setEditor: (@editor)->
+#      newId: -> @data.newId()
+#
+#`changeStructure(oldBlocks, newText)`: Compute blocks affected by transforming oldBlocks into newText
+#
+#      changeStructure: (oldBlocks, newText)->
+#        computeNewStructure this, oldBlocks, newText
+#      mergeChangeContext: (obj)-> @changeContext = _.merge {}, @changeContext ? {}, obj
+#      clearChangeContext: -> @changeContext = null
+#
+#`getBlock(id) -> block?`: get the current block for id
+#
+#      getBlock: (id)-> @blocks[id]
+#
+#`bindings {keys -> binding(editor, event, selectionRange)}`: a map of bindings (can use LeisureEditCore.defaultBindings)
+#
+#      bindings: defaultBindings
+#
+#`blockColumn(pos) -> colNum`: returns the start column on the page for the current block
+#
+#      blockColumn: (pos)-> pos.textPosition().left
+#
+#`topRect() -> rect?`: returns null or the rectangle of a toolbar at the page top
+#
+#      topRect: -> null
+#
+#`keyUp(editor) -> void`: handle keyup after-actions
+#
+#      keyUp: ->
+#
+#`domCursor(node, pos) -> DOMCursor`: return a domCursor that skips over non-content
+#
+#      domCursor: (node, pos)->
+#        new DOMCursor(node, pos).addFilter (n)-> (n.hasAttribute('data-noncontent') && 'skip') || true
+#
+#`getContainer(node) -> Node?`: get block DOM node containing for a node
+#
+#      getContainer: (node)->
+#        if @editor.node[0].compareDocumentPosition(node) & Element.DOCUMENT_POSITION_CONTAINED_BY
+#          $(node).closest('[data-block]')[0]
+#
+#`load(name, text) -> void`: parse text into blocks and trigger a 'load' event
+#
+#      load: (name, text)->
+#        @options.suppressTriggers =>
+#          @options.data.suppressTriggers =>
+#            @replaceText {start: 0, end: @getLength(), text, source: 'edit'}
+#        @rerenderAll()
+#        @trigger 'load'
+#      rerenderAll: ->
+#        @editor.setHtml @editor.node[0], @renderBlocks()
+#        if result = @validatePositions()
+#          console.error "DISCREPENCY AT POSITION #{result.block._id}, #{result.offset},",
+#      blockCount: ->
+#        c = 0
+#        for b of @blocks
+#          c++
+#        c
+#      blockList: ->
+#        next = @getFirst()
+#        while next
+#          bl = @getBlock next
+#          next = bl.next
+#          bl
+#      docOffsetForBlockOffset: (bOff, offset)-> @data.docOffsetForBlockOffset bOff, offset
+#      blockOffsetForDocOffset: (dOff)-> @data.blockOffsetForDocOffset dOff
+#      getPositionForBlock: (block)->
+#        cur = @getBlock @getFirst()
+#        offset = 0
+#        while cur._id != block._id
+#          offset += cur.text.length
+#          cur = @getBlock cur.next
+#        offset
+#      getBlockOffsetForPosition: (pos)->
+#        cur = @getBlock @getFirst()
+#        while pos >= cur.text.length
+#          pos -= cur.text.length
+#          cur = @getBlock cur.next
+#        block: cur
+#        offset: pos
+#      renderBlocks: ->
+#        result = ''
+#        next = @getFirst()
+#        while next && [html, next] = @renderBlock @getBlock next
+#          result += html
+#        result
+#      getText: ->
+#        text = ''
+#        block = @data.getBlock @data.getFirst()
+#        while block
+#          text += block.text
+#          block = @data.getBlock block.next
+#        text
+#      getLength: ->
+#        len = 0
+#        block = @data.getBlock @data.getFirst()
+#        while block
+#          len += block.text.length
+#          block = @data.getBlock block.next
+#        len
+#      isValidDocOffset: (offset)-> 0 <= offset <= @getLength()
+#      validatePositions: ->
+#        block = @data.getBlock @data.getFirst()
+#        while block
+#          if node = @nodeForId(block._id)[0]
+#            cursor = @domCursor(node, 0).mutable()
+#            for offset in [0...block.text.length]
+#              cursor = cursor.firstText()
+#              if cursor.isEmpty() || !sameCharacter cursor.character(), block.text[offset]
+#                return {block, offset}
+#              cursor.forwardChar()
+#          block = @data.getBlock block.next
 
-Events:
-  `load`: new text was loaded into the editor
+    #export BasicEditingOptions = BasicEditingOptionsOld
+    export BasicEditingOptions = BasicEditingOptionsNew
 
-Hook methods (required)
------------------------
+    #spaces = String.fromCharCode( 32, 160)
 
-`renderBlock(block) -> [html, next]`: render a block (and potentially its children) and return the HTML and the next blockId if there is one
+    #export sameCharacter = (c1, c2)-> c1 == c2 || ((c1 in spaces) && (c2 in spaces))
 
-  * Block DOM (DOM for a block) must be a single element with the same id as the block.
-  * Block DOM may contain nested block DOM.
-  * each block's DOM should have the same id as the block and have a data-block attribute
-  * non-editable parts of the DOM should have contenteditable=false
-  * completely skipped parts should be non-editable and have a data-noncontent attribute
+    #export computeNewStructure = (access, oldBlocks, newText)->
+    #  prev = oldBlocks[0]?.prev ? 0
+    #  oldBlocks = oldBlocks.slice()
+    #  oldText = null
+    #  offset = 0
+    #  if oldBlocks.length
+    #    while oldText != newText && (oldBlocks[0].prev || last(oldBlocks).next)
+    #      oldText = newText
+    #      if prev = access.getBlock oldBlocks[0].prev
+    #        oldBlocks.unshift prev
+    #        newText = prev.text + newText
+    #        offset += prev.text.length
+    #      if next = access.getBlock last(oldBlocks).next
+    #        oldBlocks.push next
+    #        newText += next.text
+    #      newBlocks = access.parseBlocks newText
+    #      if (!prev || prev.text == newBlocks[0].text) && (!next || next.text == last(newBlocks).text)
+    #        break
+    #  if !newBlocks then newBlocks = access.parseBlocks newText
+    #  while oldBlocks.length && newBlocks.length && oldBlocks[0].text == newBlocks[0].text
+    #    offset -= oldBlocks[0].text.length
+    #    prev = oldBlocks[0]._id
+    #    oldBlocks.shift()
+    #    newBlocks.shift()
+    #  while oldBlocks.length && newBlocks.length && last(oldBlocks).text == last(newBlocks).text
+    #    oldBlocks.pop()
+    #    newBlocks.pop()
+    #  oldBlocks: oldBlocks, newBlocks: newBlocks, offset: offset, prev: prev
 
-Properties of BasicEditingOptions
----------------------------------
-* `blocks {id -> block}`: block table
-* `first`: id of first block
-* `bindings {keys -> binding(editor, event, selectionRange)}`: a map of bindings (can use LeisureEditCore.defaultBindings)
-
-Methods of BasicEditingOptions
-------------------------------
-* `getBlock(id) -> block?`: get the current block for id
-* `getContainer(node) -> Node?`: get block DOM node containing for a node
-* `getFirst() -> blockId`: get the first block id
-* `domCursor(node, pos) -> DOMCursor`: return a domCursor that skips over non-content
-* `keyUp(editor) -> void`: handle keyup after-actions
-* `topRect() -> rect?`: returns null or the rectangle of a toolbar at the page top
-* `blockColumn(pos) -> colNum`: returns the start column on the page for the current block
-* `load(el, text) -> void`: parse text into blocks and replace el's contents with rendered DOM
-
-    export class BasicEditingOptions extends Observable
-
-      renderBlock: (block)-> throw new Error "options.renderBlock(block) is not implemented"
-
-Hook methods (optional)
------------------------
-
-`simulateCut({html, text})`: The editor calls this when the user hits backspace or delete on selected text.
-
-      simulateCut: ({html, text})->
-
-`dragEnter(event)`: alter the drag-enter behavior.  If you want to cancel the drag, for
-instance, call event.preventDefault() and set the dropEffect to 'none'
-
-      dragEnter: (event)->
-        if !event.dataTransfer.getData
-          useEvent event
-          event.dropEffect = 'none'
-
-`dragOver(event)`: alter the drag-enter behavior.  If you want to cancel the drag, for
-instance, call event.preventDefault() and set the dropEffect to 'none'
-
-      dragOver: (event)->
-        if !event.dataTransfer.getData
-          useEvent event
-          event.dropEffect = 'none'
-
-Main code
----------
-
-      constructor: ->
-        super()
-        @changeContext = null
-        @initData()
-
-      setDiagEnabled: (flag)->
-        #changeAdvice this, flag,
-        #  renderBlocks: diag: wrapDiag
-        #  changed: diag: wrapDiag
-        #if flag then @diag()
-
-      diag: -> @trigger 'diag', @editor.verifyAllNodes()
-
-      initData: ->
-
-`blocks {id -> block}`: block table
-
-        @blocks = {}
-
-`first`: id of first block
-
-        @first = null
-
-`getFirst() -> blockId`: get the first block id
-
-      getFirst: -> @first
-      nodeForId: (id)-> $("##{id}")
-      idForNode: (node)-> $(node).prop 'id'
-      setEditor: (@editor)->
-      newId: -> @data.newId()
-
-`changeStructure(oldBlocks, newText)`: Compute blocks affected by transforming oldBlocks into newText
-
-      changeStructure: (oldBlocks, newText)->
-        computeNewStructure this, oldBlocks, newText
-      mergeChangeContext: (obj)-> @changeContext = _.merge {}, @changeContext ? {}, obj
-      clearChangeContext: -> @changeContext = null
-
-`getBlock(id) -> block?`: get the current block for id
-
-      getBlock: (id)-> @blocks[id]
-
-`bindings {keys -> binding(editor, event, selectionRange)}`: a map of bindings (can use LeisureEditCore.defaultBindings)
-
-      bindings: defaultBindings
-
-`blockColumn(pos) -> colNum`: returns the start column on the page for the current block
-
-      blockColumn: (pos)-> pos.textPosition().left
-
-`topRect() -> rect?`: returns null or the rectangle of a toolbar at the page top
-
-      topRect: -> null
-
-`keyUp(editor) -> void`: handle keyup after-actions
-
-      keyUp: ->
-
-`domCursor(node, pos) -> DOMCursor`: return a domCursor that skips over non-content
-
-      domCursor: (node, pos)->
-        new DOMCursor(node, pos).addFilter (n)-> (n.hasAttribute('data-noncontent') && 'skip') || true
-
-`getContainer(node) -> Node?`: get block DOM node containing for a node
-
-      getContainer: (node)->
-        if @editor.node[0].compareDocumentPosition(node) & Element.DOCUMENT_POSITION_CONTAINED_BY
-          $(node).closest('[data-block]')[0]
-
-`loaname, text) -> void`: parse text into blocks and trigger a 'load' event
-
-      load: (name, text)->
-        @options.suppressTriggers =>
-          @options.data.suppressTriggers =>
-            @replaceText {start: 0, end: @getLength(), text, source: 'edit'}
-        @rerenderAll()
-        @trigger 'load'
-      rerenderAll: ->
-        @editor.setHtml @editor.node[0], @renderBlocks()
-        if result = @validatePositions()
-          console.error "DISCREPENCY AT POSITION #{result.block._id}, #{result.offset},",
-      blockCount: ->
-        c = 0
-        for b of @blocks
-          c++
-        c
-      blockList: ->
-        next = @getFirst()
-        while next
-          bl = @getBlock next
-          next = bl.next
-          bl
-      docOffsetForBlockOffset: (bOff, offset)-> @data.docOffsetForBlockOffset bOff, offset
-      blockOffsetForDocOffset: (dOff)-> @data.blockOffsetForDocOffset dOff
-      getPositionForBlock: (block)->
-        cur = @getBlock @getFirst()
-        offset = 0
-        while cur._id != block._id
-          offset += cur.text.length
-          cur = @getBlock cur.next
-        offset
-      getBlockOffsetForPosition: (pos)->
-        cur = @getBlock @getFirst()
-        while pos >= cur.text.length
-          pos -= cur.text.length
-          cur = @getBlock cur.next
-        block: cur
-        offset: pos
-      renderBlocks: ->
-        result = ''
-        next = @getFirst()
-        while next && [html, next] = @renderBlock @getBlock next
-          result += html
-        result
-      getText: ->
-        text = ''
-        block = @data.getBlock @data.getFirst()
-        while block
-          text += block.text
-          block = @data.getBlock block.next
-        text
-      getLength: ->
-        len = 0
-        block = @data.getBlock @data.getFirst()
-        while block
-          len += block.text.length
-          block = @data.getBlock block.next
-        len
-      isValidDocOffset: (offset)-> 0 <= offset <= @getLength()
-      validatePositions: ->
-        block = @data.getBlock @data.getFirst()
-        while block
-          if node = @nodeForId(block._id)[0]
-            cursor = @domCursor(node, 0).mutable()
-            for offset in [0...block.text.length]
-              cursor = cursor.firstText()
-              if cursor.isEmpty() || !sameCharacter cursor.character(), block.text[offset]
-                return {block, offset}
-              cursor.forwardChar()
-          block = @data.getBlock block.next
-
-    spaces = String.fromCharCode( 32, 160)
-
-    sameCharacter = (c1, c2)-> c1 == c2 || ((c1 in spaces) && (c2 in spaces))
-
-    export computeNewStructure = (access, oldBlocks, newText)->
-      prev = oldBlocks[0]?.prev ? 0
-      oldBlocks = oldBlocks.slice()
-      oldText = null
-      offset = 0
-      if oldBlocks.length
-        while oldText != newText && (oldBlocks[0].prev || last(oldBlocks).next)
-          oldText = newText
-          if prev = access.getBlock oldBlocks[0].prev
-            oldBlocks.unshift prev
-            newText = prev.text + newText
-            offset += prev.text.length
-          if next = access.getBlock last(oldBlocks).next
-            oldBlocks.push next
-            newText += next.text
-          newBlocks = access.parseBlocks newText
-          if (!prev || prev.text == newBlocks[0].text) && (!next || next.text == last(newBlocks).text)
-            break
-      if !newBlocks then newBlocks = access.parseBlocks newText
-      while oldBlocks.length && newBlocks.length && oldBlocks[0].text == newBlocks[0].text
-        offset -= oldBlocks[0].text.length
-        prev = oldBlocks[0]._id
-        oldBlocks.shift()
-        newBlocks.shift()
-      while oldBlocks.length && newBlocks.length && last(oldBlocks).text == last(newBlocks).text
-        oldBlocks.pop()
-        newBlocks.pop()
-      oldBlocks: oldBlocks, newBlocks: newBlocks, offset: offset, prev: prev
-
-    export copyBlock = (block)-> if !block then null else Object.assign {}, block
+    #export copyBlock = (block)-> if !block then null else Object.assign {}, block
 
     activating = false
 
-DataStore
-=========
-An efficient block storage mechanism used by DataStoreEditingOptions
-
-Hook methods -- you must define these in your subclass
-------------------------------------------------------
-* `parseBlocks(text) -> blocks`: parse text into array of blocks -- DO NOT provide _id, prev, or next, they may be overwritten!
-
-Events
-------
-Data objects support the Observable protocol and emit change events in response to data changes
-
-`change {adds, updates, removes, oldFirst, old}`
-
-  * `oldFirst id`: the previous first (might be the same as the current)
-  * `adds {id->true}`: added items
-  * `updates {id->true}`: updated items
-  * `removes {id->true}`: removed items
-  * `old {id->old block}`: the old items from updates and removes
-
-Internal API -- provide/override these if you want to change how the store accesses data
-----------------------------------------------------------------------------------------
-
-* `getFirst()`
-* `setFirst(firstId)`
-* `getBlock(id)`
-* `setBlock(id, block)`
-* `deleteBlock(id)`
-* `eachBlock(func(block [, id]))` -- iterate with func (exit if func returns false)
-* `load(first, blocks)` -- should trigger 'load'
-
-External API -- used from outside; alternative data objects must support these methods.
----------------------------------------------------------------------------------------
-
-In addition to the methods below, data objects must support the Observable protocol and emit
-change events in response to data changes
-
-* `getFirst() -> id`: id of the first block
-* `getBlock(id) -> block`: the block for id
-* `load(name, text)`: replace the current document
-* `newId()`:
-* `docOffsetForBlockOffset(args...) -> offset`: args can be a blockOffset or block, offset
-* `blockOffsetForDocOffset(offset) -> blockOffset`: the block offset for a position in the document
-* `suppressTriggers(func) -> func's return value`: suppress triggers while executing func (inherited from Observable)
-
-<!-- -->
-
-    export class DataStore extends Observable
-      constructor: ->
-        super()
-        @blocks = {}
-        @blockIndex = @newBlockIndex()
-        @changeCount = 0
-        @clearMarks()
-        @markNames = {}
-      load: (name, text)->
-        blockMap = {}
-        newBlocks = @parseBlocks text
-        for block, i in newBlocks
-          block._id = @newId()
-          blockMap[block._id] = block
-          if prev = newBlocks[i - 1]
-            prev.next = block._id
-            block.prev = prev._id
-        @first = newBlocks[0]?._id
-        @blocks = blockMap
-        @makeChanges =>
-          @indexBlocks()
-          @trigger 'load'
-
-`parseBlocks(text) -> blocks`: parse text into array of blocks -- DO NOT provide _id, prev, or next, they may be overwritten!
-
-      parseBlocks: (text)-> throw new Error "options.parseBlocks(text) is not implemented"
-
-      newBlockIndex: (contents)-> FingerTree.fromArray contents ? [],
-        identity: -> ids: Set(), length: 0
-        measure: (v)-> ids: Set([v.id]), length: v.length
-        sum: (a, b)-> ids: a.ids.union(b.ids), length: a.length + b.length
-      newId: -> "block#{idCounter++}"
-      setDiagEnabled: (flag)->
-        #changeAdvice this, flag,
-        #  makeChanges: diag: afterMethod ->
-        #    if @changeCount == 0 then @diag()
-        #if flag then @diag()
-
-`getLength() -> number`: the length of the entire document
-
-      getLength: -> @blockIndex.measure().length
-      makeChanges: (func)->
-        @changeCount++
-        try
-          func()
-        finally
-          @changeCount--
-      clearMarks: -> @marks = FingerTree.fromArray [],
-        identity: -> names: Set(), length: 0
-        measure: (n)-> names: Set([n.name]), length: n.offset
-        sum: (a, b)-> names: a.names.union(b.names), length: a.length + b.length
-      addMark: (name, offset)->
-        if @markNames[name] then @removeMark name
-        @markNames[name] = true
-        [first, rest] = @marks.split (m)-> m.length >= offset
-        l = first.measure().length
-        if !rest.isEmpty()
-          n = rest.peekFirst()
-          rest = rest.removeFirst().addFirst
-            offset: l + n.offset - offset
-            name: n.name
-        @marks = first.concat rest.addFirst
-          offset: offset - l
-          name: name
-      removeMark: (name)-> if @markNames[name]
-        delete @markNames[name]
-        [first, rest] = @marks.split (m)-> m.names.contains name
-        if !rest.isEmpty()
-          removed = rest.peekFirst()
-          rest = rest.removeFirst()
-          if !rest.isEmpty()
-            n = rest.peekFirst()
-            rest = rest.removeFirst()
-              .addFirst offset: removed.offset + n.offset, name: n.name
-        @marks = first.concat rest
-      listMarks: ->
-        m = []
-        t = @marks
-        while !t.isEmpty()
-          n = t.peekFirst()
-          m.push _.defaults {location: @getMarkLocation n.name}, n
-          t = t.removeFirst()
-        m
-      getMarkLocation: (name)-> if @markNames[name]
-        [first, rest] = @marks.split (m)-> m.names.contains name
-        if !rest.isEmpty() then first.measure().length + rest.peekFirst().offset
-      blockOffsetForMark: (name)-> if offset = @getMarkLocation name
-        @blockOffsetForDocOffset offset
-      floatMarks: (start, end, newLength)-> if newLength != oldLength = end - start
-        [first, rest] = @marks.split (m)-> m.length > start
-        if !rest.isEmpty()
-          n = rest.peekFirst()
-          @marks = first.concat rest.removeFirst().addFirst
-            name: n.name
-            offset: n.offset + newLength - oldLength
-      replaceText: ({start, end, text})->
-        {prev, oldBlocks, newBlocks} = @changesForReplacement start, end, text
-        if oldBlocks
-          @change @changesFor prev, oldBlocks.slice(), newBlocks.slice()
-          @floatMarks start, end, text.length
-      changesForReplacement: (start, end, text)->
-        {blocks, newText} = @blockOverlapsForReplacement start, end, text
-        {oldBlocks, newBlocks, offset, prev} = change = computeNewStructure this, blocks, newText
-        if oldBlocks.length || newBlocks.length then change else {}
-      computeRemovesAndNewBlockIds: (oldBlocks, newBlocks, newBlockMap, removes)->
-        for oldBlock in oldBlocks[newBlocks.length...oldBlocks.length]
-          removes[oldBlock._id] = oldBlock
-        prev = null
-        for newBlock, i in newBlocks
-          if oldBlock = oldBlocks[i]
-            newBlock._id = oldBlock._id
-            newBlock.prev = oldBlock.prev
-            newBlock.next = oldBlock.next
-          else
-            newBlock._id = @newId()
-            if prev then link prev, newBlock
-          prev = newBlockMap[newBlock._id] = newBlock
-        prev
-      patchNewBlocks: (first, oldBlocks, newBlocks, changes, newBlockMap, removes, prev)->
-        if !oldBlocks.length && first = @getBlock first
-          oldNext = @getBlock first.next
-          oldBlocks.unshift first
-          first = newBlockMap[first._id] = copyBlock first
-          link first, newBlocks[0]
-          newBlocks.unshift first
-          if oldNext
-            oldBlocks.push oldNext
-            oldNext = newBlockMap[oldNext._id] = copyBlock oldNext
-            link last(newBlocks), oldNext
-            newBlocks.push oldNext
-        else if oldBlocks.length != newBlocks.length
-          if !prev && prev = copyBlock oldPrev = @getBlock oldBlocks[0].prev
-            oldBlocks.unshift oldPrev
-            newBlocks.unshift prev
-            newBlockMap[prev._id] = prev
-          lastBlock = last oldBlocks
-          if next = copyBlock oldNext = @getBlock (if lastBlock then lastBlock.next else @getFirst())
-            oldBlocks.push oldNext
-            newBlocks.push next
-            newBlockMap[next._id] = next
-            if !(next.prev = prev?._id) then changes.first = next._id
-          if prev
-            if !first && ((newBlocks.length && !newBlocks[0].prev) || !oldBlocks.length || !@getFirst() || removes[@getFirst()])
-              changes.first = newBlocks[0]._id
-            prev.next = next?._id
-      changesFor: (first, oldBlocks, newBlocks)->
-        newBlockMap = {}
-        removes = {}
-        changes = {removes, sets: newBlockMap, first: @getFirst(), oldBlocks, newBlocks}
-        prev = @computeRemovesAndNewBlockIds oldBlocks, newBlocks, newBlockMap, removes
-        @patchNewBlocks first, oldBlocks, newBlocks, changes, newBlockMap, removes, prev
-        @removeDuplicateChanges newBlockMap
-        changes
-      removeDuplicateChanges: (newBlockMap)->
-        dups = []
-        for id, block of newBlockMap
-          if (oldBlock = @getBlock id) && block.text == oldBlock.text && block.next == oldBlock.next && block.prev == oldBlock.prev
-            dups.push id
-        for id of dups
-          delete newBlockMap[id]
-      checkChanges: -> if @changeCount == 0
-        throw new Error "Attempt to make a change outside of makeChanges"
-      setIndex: (i)->
-        @checkChanges()
-        @blockIndex = i
-      getFirst: -> @first
-      setFirst: (firstId)-> @first = firstId
-      getBlock: (id)-> @blocks[id]
-      setBlock: (id, block)->
-        @checkChanges()
-        @blocks[id] = block
-        @indexBlock block
-      deleteBlock: (id)->
-        @checkChanges()
-        delete @blocks[id]
-        @unindexBlock id
-      eachBlock: (func)->
-        block = @getBlock @getFirst()
-        while block && func(block, block._id) != false
-          block = @getBlock block.next
-        null
-      indexBlocks: ->
-        @checkChanges()
-        items = []
-        @eachBlock (block)=> items.push indexNode block
-        @setIndex @newBlockIndex items
-      splitBlockIndexOnId: (id)-> @blockIndex.split (m)-> m.ids.contains id
-      splitBlockIndexOnOffset: (offset)-> @blockIndex.split (m)-> m.length > offset
-      indexBlock: (block)-> if block
-        @checkChanges()
-        # if the block is indexed, it might be an easy case, otherwise unindex it
-        [first, rest] = @splitBlockIndexOnId block._id
-        if !rest.isEmpty() && rest.peekFirst().id == block._id &&
-          (next = rest.removeFirst()) &&
-          (if next.isEmpty() then !block.next else next.peekFirst().id == block.next) &&
-          (if first.isEmpty() then !block.prev else first.peekLast().id == block.prev)
-            return @setIndex first.addLast(indexNode block).concat next
-        if !rest.isEmpty() then @unindexBlock block._id
-        # if next is followed by prev, just insert the block in between
-        if (split = @fingerNodeOrder(block.prev, block.next)) && _.isArray split
-          [first, rest] = split
-          return @setIndex first.addLast(indexNode block).concat rest
-        # repair as much of the index as possible and insert the block
-        @insertAndRepairIndex block
-      fingerNode: (id)->
-        id && (node = @splitBlockIndexOnId(id)[1].peekFirst()) && node.id == id && node
-      fingerNodeOrder: (a, b)->
-        return !(a || b) ||
-        if !a && b then @fingerNode b
-        else if !b && a then @fingerNode a
-        else
-          [first, rest] = split = @splitBlockIndexOnId b
-          !first.isEmpty() && !rest.isEmpty() && rest.peekFirst()?.id == b && first.peekLast()?.id == a && split
-      # insert block into the index
-      # then trace forwards and backwards, repairing along the way
-      insertAndRepairIndex: (block)->
-        console.warn "REPAIR"
-        node = indexNode block
-        if block.next
-          prev = @getBlock block.prev
-          if !block.prev
-            @setIndex @blockIndex.addFirst indexNode block
-          else
-            [first, rest] = @splitBlockIndexOnId block.next
-            @setIndex first.addLast(node).concat rest
-        else if block.prev
-          [first, rest] = @splitBlockIndexOnId block.prev
-          @setIndex first.addLast(node).concat rest
-        else @setIndex @newBlockIndex [node]
-        mark = block
-        cur = @getBlock block.next
-        while cur && !@fingerNodeOrder mark._id, cur._id
-          @unindexBlock cur._id
-          [first, rest] = @splitBlockIndexOnId mark._id
-          @setIndex insertAfterSplit first, indexNode(cur), rest
-          mark = cur
-          cur = @getBlock cur.next
-        mark = block
-        cur = @getBlock block.prev
-        while cur && !@fingerNodeOrder cur._id, mark._id
-          @unindexBlock cur._id
-          [first, rest] = @splitBlockIndexOnId mark._id
-          @setIndex insertInSplit first, indexNode(cur), rest
-          mark = cur
-          cur = @getBlock cur.prev
-      unindexBlock: (id)->
-        @checkChanges()
-        if id
-          [first, rest] = @splitBlockIndexOnId id
-          if rest.peekFirst()?.id == id
-            @setIndex first.concat rest.removeFirst()
-
-`docOffsetForBlockOffset(args...) -> offset`: args can be a blockOffset or block, offset
-
-      docOffsetForBlockOffset: (block, offset)->
-        if typeof block == 'object'
-          offset = block.offset
-          block = block.block
-        @offsetForBlock(block) + offset
-      blockOffsetForDocOffset: (offset)->
-        results = @splitBlockIndexOnOffset offset
-        if !results[1].isEmpty()
-          block: results[1].peekFirst().id
-          offset: offset - results[0].measure().length
-        else
-          block: results[0].peekLast().id
-          offset: results[0].removeLast().measure().length
-      offsetForBlock: (blockOrId)->
-        id = if typeof blockOrId == 'string' then blockOrId else blockOrId._id
-        if @getBlock id then @splitBlockIndexOnId(id)[0].measure().length else 0
-      blockForOffset: (offset)->
-        results = @splitBlockIndexOnOffset offset
-        (results[1]?.peekFirst() ? results[0].peekLast).id
-      getDocLength: -> @blockIndex.measure().length
-      getDocSubstring: (start, end)->
-        startOffset = @blockOffsetForDocOffset start
-        endOffset = @blockOffsetForDocOffset end
-        block = @getBlock startOffset.block
-        text = ''
-        while block._id != endOffset.block
-          text += block.text
-          block = @getBlock block.next
-        if startOffset.block == endOffset.block
-          block.text.substring startOffset.offset, endOffset.offset
-        else text.substring(startOffset.offset) + block.text.substring 0, endOffset.offset
-
-`getText(): -> string`: the text for the entire document
-
-      getText: ->
-        text = ''
-        @eachBlock (block)-> text += block.text
-        text
-      check: ->
-        seen = {}
-        first = next = @getFirst()
-        prev = null
-        while next
-          prev = next
-          if seen[next] then throw new Error "cycle in next links"
-          seen[next] = true
-          oldBl = bl
-          bl = @getBlock next
-          if !bl then throw new Error "Next of #{oldBl._id} doesn't exist"
-          next = bl.next
-        @eachBlock (block)->
-          if block._id != first && !seen[block._id] then throw new Error "#{block._id} not in next chain"
-        seen = {}
-        lastBlock = prev
-        while prev
-          if seen[prev] then throw new Error "cycle in prev links"
-          seen[prev] = true
-          oldBl = bl
-          bl = @getBlock prev
-          if !bl then throw new Error "Prev of #{oldBl._id} doesn't exist"
-          prev = bl.prev
-        @eachBlock (block)->
-          if block._id != lastBlock && !seen[block._id] then throw new Error "#{block._id} not in prev chain"
-        null
-      blockList: ->
-        next = @getFirst()
-        while next
-          bl = @getBlock next
-          next = bl.next
-          bl
-      change: (changes)-> @trigger 'change', @makeChange changes
-      makeChange: ({first, sets, removes, oldBlocks, newBlocks})->
-        @makeChanges =>
-          {adds, updates, old} = result = {adds: {}, updates: {}, removes, old: {}, sets, oldFirst: @getFirst(), first: first, oldBlocks, newBlocks}
-          @setFirst first
-          for id of removes
-            if bl = @getBlock id
-              old[id] = bl
-              @deleteBlock id
-          for id, block of sets
-            if bl = @getBlock id
-              old[id] = bl
-              updates[id] = block
-            else adds[id] = block
-            @setBlock id, block
-          try
-            @check()
-          catch err
-            console.log err
-          result
-      indexArray: -> treeToArray @blockIndex
-      blockArray: ->
-        blocks = []
-        block = @getBlock @getFirst()
-        while block
-          blocks.push block
-          block = @getBlock block.next
-        blocks
-      diag: -> @trigger 'diag', @verifyIndex()
-      verifyIndex: ->
-        iArray = @indexArray()
-        treeIds = _.map iArray, _.property 'id'
-        bArray = @blockArray()
-        blockIds = _.map bArray, _.property '_id'
-        if !_.isEqual treeIds, blockIds
-          console.warn "INDEX ERROR:\nEXPECTED: #{JSON.stringify blockIds}\nBUT GOT: #{JSON.stringify treeIds}"
-        last = null
-        errs = new BlockErrors()
-        for node in iArray
-          if node.length != @getBlock(node.id)?.text.length
-            errs.badId node.id, 'bad index length'
-        offset = 0
-        @eachBlock (block)=>
-          last = block
-          if !@fingerNodeOrder block.prev, block._id
-            errs.badId block._id, 'bad order'
-            console.warn "NODE ORDER WRONG FOR #{block.prev}, #{block._id}"
-          if offset != @offsetForBlock block._id
-            errs.badId block._id, "offset"
-          if block.prev && @blockForOffset(offset - 1) != block.prev
-            errs.badId block._id, "prev"
-          if block.next && @blockForOffset(offset + block.text.length) != block.next
-            errs.badId block._id, "next"
-          offset += block.text.length
-        errs.errors()
-      blockOverlapsForReplacement: (start, end, text)->
-        startBlock = @getBlock @blockForOffset(start)
-        if !startBlock && start then startBlock = @getBlock @blockForOffset(start - 1)
-        endBlock = @getBlock @blockForOffset end
-        if !endBlock && end then endBlock = @getBlock @blockForOffset(end - 1)
-        blocks = [startBlock]
-        cur = startBlock
-        while cur != endBlock && cur.next
-          blocks.push cur = @getBlock cur.next
-        fullText = blockText blocks
-        offset = @offsetForBlock blocks[0]
-        blocks: blocks
-        blockText: fullText
-        newText: fullText.substring(0, start - offset) + text + (fullText.substring end - offset)
-
-    class BlockErrors
-      constructor: ->
-        @order = []
-        @ids = {}
-      isEmpty: -> !@order.length
-      badId: (id, msg)->
-        if !@ids[id]
-          @order.push id
-          @ids[id] = msg
-        else @ids[id] += ", #{msg}"
-      errors: -> if !@isEmpty() then [id, "(#{@ids[id]})"] for id in @order
-
-    export treeToArray = (tree)->
-      nodes = []
-      while !tree.isEmpty()
-        nodes.push tree.peekFirst()
-        tree = tree.removeFirst()
-      nodes
-
-    indexNode = (block)-> id: block._id, length: block.text.length
-
-    insertInSplit = (first, middle, rest)->
-      if first.isEmpty() then rest.addFirst middle
-      else if rest.isEmpty() then first.addLast middle
-      else first.addLast(middle).concat rest
-
-    insertAfterSplit = (first, afterMiddle, rest)->
-      next = rest.removeFirst().addFirst(afterMiddle)
-      if first.isEmpty() then next.addFirst rest.peekFirst()
-      else first.addLast(rest.peekFirst()).concat next
+#DataStore
+#=========
+#An efficient block storage mechanism used by DataStoreEditingOptions
+#
+#Hook methods -- you must define these in your subclass
+#------------------------------------------------------
+#* `parseBlocks(text) -> blocks`: parse text into array of blocks -- DO NOT provide _id, prev, or next, they may be overwritten!
+#
+#Events
+#------
+#Data objects support the Observable protocol and emit change events in response to data changes
+#
+#`change {adds, updates, removes, oldFirst, old}`
+#
+#  * `oldFirst id`: the previous first (might be the same as the current)
+#  * `adds {id->true}`: added items
+#  * `updates {id->true}`: updated items
+#  * `removes {id->true}`: removed items
+#  * `old {id->old block}`: the old items from updates and removes
+#
+#Internal API -- provide/override these if you want to change how the store accesses data
+#----------------------------------------------------------------------------------------
+#
+#* `getFirst()`
+#* `setFirst(firstId)`
+#* `getBlock(id)`
+#* `setBlock(id, block)`
+#* `deleteBlock(id)`
+#* `eachBlock(func(block [, id]))` -- iterate with func (exit if func returns false)
+#* `load(first, blocks)` -- should trigger 'load'
+#
+#External API -- used from outside; alternative data objects must support these methods.
+#---------------------------------------------------------------------------------------
+#
+#In addition to the methods below, data objects must support the Observable protocol and emit
+#change events in response to data changes
+#
+#* `getFirst() -> id`: id of the first block
+#* `getBlock(id) -> block`: the block for id
+#* `load(name, text)`: replace the current document
+#* `newId()`:
+#* `docOffsetForBlockOffset(args...) -> offset`: args can be a blockOffset or block, offset
+#* `blockOffsetForDocOffset(offset) -> blockOffset`: the block offset for a position in the document
+#* `suppressTriggers(func) -> func's return value`: suppress triggers while executing func (inherited from Observable)
+#
+#<!-- -->
+#
+#    export class DataStore extends Observable
+#      constructor: ->
+#        super()
+#        @blocks = {}
+#        @blockIndex = @newBlockIndex()
+#        @changeCount = 0
+#        @clearMarks()
+#        @markNames = {}
+#      load: (name, text)->
+#        blockMap = {}
+#        newBlocks = @parseBlocks text
+#        for block, i in newBlocks
+#          block._id = @newId()
+#          blockMap[block._id] = block
+#          if prev = newBlocks[i - 1]
+#            prev.next = block._id
+#            block.prev = prev._id
+#        @first = newBlocks[0]?._id
+#        @blocks = blockMap
+#        @makeChanges =>
+#          @indexBlocks()
+#          @trigger 'load'
+#
+#`parseBlocks(text) -> blocks`: parse text into array of blocks -- DO NOT provide _id, prev, or next, they may be overwritten!
+#
+#      parseBlocks: (text)-> throw new Error "options.parseBlocks(text) is not implemented"
+#
+#      newBlockIndex: (contents)-> FingerTree.fromArray contents ? [],
+#        identity: -> ids: Set(), length: 0
+#        measure: (v)-> ids: Set([v.id]), length: v.length
+#        sum: (a, b)-> ids: a.ids.union(b.ids), length: a.length + b.length
+#      newId: -> "block#{idCounter++}"
+#      setDiagEnabled: (flag)->
+#        #changeAdvice this, flag,
+#        #  makeChanges: diag: afterMethod ->
+#        #    if @changeCount == 0 then @diag()
+#        #if flag then @diag()
+#
+#`getLength() -> number`: the length of the entire document
+#
+#      getLength: -> @blockIndex.measure().length
+#      makeChanges: (func)->
+#        @changeCount++
+#        try
+#          func()
+#        finally
+#          @changeCount--
+#      clearMarks: -> @marks = FingerTree.fromArray [],
+#        identity: -> names: Set(), length: 0
+#        measure: (n)-> names: Set([n.name]), length: n.offset
+#        sum: (a, b)-> names: a.names.union(b.names), length: a.length + b.length
+#      addMark: (name, offset)->
+#        if @markNames[name] then @removeMark name
+#        @markNames[name] = true
+#        [first, rest] = @marks.split (m)-> m.length >= offset
+#        l = first.measure().length
+#        if !rest.isEmpty()
+#          n = rest.peekFirst()
+#          rest = rest.removeFirst().addFirst
+#            offset: l + n.offset - offset
+#            name: n.name
+#        @marks = first.concat rest.addFirst
+#          offset: offset - l
+#          name: name
+#      removeMark: (name)-> if @markNames[name]
+#        delete @markNames[name]
+#        [first, rest] = @marks.split (m)-> m.names.contains name
+#        if !rest.isEmpty()
+#          removed = rest.peekFirst()
+#          rest = rest.removeFirst()
+#          if !rest.isEmpty()
+#            n = rest.peekFirst()
+#            rest = rest.removeFirst()
+#              .addFirst offset: removed.offset + n.offset, name: n.name
+#        @marks = first.concat rest
+#      listMarks: ->
+#        m = []
+#        t = @marks
+#        while !t.isEmpty()
+#          n = t.peekFirst()
+#          m.push _.defaults {location: @getMarkLocation n.name}, n
+#          t = t.removeFirst()
+#        m
+#      getMarkLocation: (name)-> if @markNames[name]
+#        [first, rest] = @marks.split (m)-> m.names.contains name
+#        if !rest.isEmpty() then first.measure().length + rest.peekFirst().offset
+#      blockOffsetForMark: (name)-> if offset = @getMarkLocation name
+#        @blockOffsetForDocOffset offset
+#      floatMarks: (start, end, newLength)-> if newLength != oldLength = end - start
+#        [first, rest] = @marks.split (m)-> m.length > start
+#        if !rest.isEmpty()
+#          n = rest.peekFirst()
+#          @marks = first.concat rest.removeFirst().addFirst
+#            name: n.name
+#            offset: n.offset + newLength - oldLength
+#      replaceText: ({start, end, text})->
+#        {prev, oldBlocks, newBlocks} = @changesForReplacement start, end, text
+#        if oldBlocks
+#          @change @changesFor prev, oldBlocks.slice(), newBlocks.slice()
+#          @floatMarks start, end, text.length
+#      changesForReplacement: (start, end, text)->
+#        {blocks, newText} = @blockOverlapsForReplacement start, end, text
+#        {oldBlocks, newBlocks, offset, prev} = change = computeNewStructure this, blocks, newText
+#        if oldBlocks.length || newBlocks.length then change else {}
+#      computeRemovesAndNewBlockIds: (oldBlocks, newBlocks, newBlockMap, removes)->
+#        for oldBlock in oldBlocks[newBlocks.length...oldBlocks.length]
+#          removes[oldBlock._id] = oldBlock
+#        prev = null
+#        for newBlock, i in newBlocks
+#          if oldBlock = oldBlocks[i]
+#            newBlock._id = oldBlock._id
+#            newBlock.prev = oldBlock.prev
+#            newBlock.next = oldBlock.next
+#          else
+#            newBlock._id = @newId()
+#            if prev then link prev, newBlock
+#          prev = newBlockMap[newBlock._id] = newBlock
+#        prev
+#      patchNewBlocks: (first, oldBlocks, newBlocks, changes, newBlockMap, removes, prev)->
+#        if !oldBlocks.length && first = @getBlock first
+#          oldNext = @getBlock first.next
+#          oldBlocks.unshift first
+#          first = newBlockMap[first._id] = copyBlock first
+#          link first, newBlocks[0]
+#          newBlocks.unshift first
+#          if oldNext
+#            oldBlocks.push oldNext
+#            oldNext = newBlockMap[oldNext._id] = copyBlock oldNext
+#            link last(newBlocks), oldNext
+#            newBlocks.push oldNext
+#        else if oldBlocks.length != newBlocks.length
+#          if !prev && prev = copyBlock oldPrev = @getBlock oldBlocks[0].prev
+#            oldBlocks.unshift oldPrev
+#            newBlocks.unshift prev
+#            newBlockMap[prev._id] = prev
+#          lastBlock = last oldBlocks
+#          if next = copyBlock oldNext = @getBlock (if lastBlock then lastBlock.next else @getFirst())
+#            oldBlocks.push oldNext
+#            newBlocks.push next
+#            newBlockMap[next._id] = next
+#            if !(next.prev = prev?._id) then changes.first = next._id
+#          if prev
+#            if !first && ((newBlocks.length && !newBlocks[0].prev) || !oldBlocks.length || !@getFirst() || removes[@getFirst()])
+#              changes.first = newBlocks[0]._id
+#            prev.next = next?._id
+#      changesFor: (first, oldBlocks, newBlocks)->
+#        newBlockMap = {}
+#        removes = {}
+#        changes = {removes, sets: newBlockMap, first: @getFirst(), oldBlocks, newBlocks}
+#        prev = @computeRemovesAndNewBlockIds oldBlocks, newBlocks, newBlockMap, removes
+#        @patchNewBlocks first, oldBlocks, newBlocks, changes, newBlockMap, removes, prev
+#        @removeDuplicateChanges newBlockMap
+#        changes
+#      removeDuplicateChanges: (newBlockMap)->
+#        dups = []
+#        for id, block of newBlockMap
+#          if (oldBlock = @getBlock id) && block.text == oldBlock.text && block.next == oldBlock.next && block.prev == oldBlock.prev
+#            dups.push id
+#        for id of dups
+#          delete newBlockMap[id]
+#      checkChanges: -> if @changeCount == 0
+#        throw new Error "Attempt to make a change outside of makeChanges"
+#      setIndex: (i)->
+#        @checkChanges()
+#        @blockIndex = i
+#      getFirst: -> @first
+#      setFirst: (firstId)-> @first = firstId
+#      getBlock: (id)-> @blocks[id]
+#      setBlock: (id, block)->
+#        @checkChanges()
+#        @blocks[id] = block
+#        @indexBlock block
+#      deleteBlock: (id)->
+#        @checkChanges()
+#        delete @blocks[id]
+#        @unindexBlock id
+#      eachBlock: (func)->
+#        block = @getBlock @getFirst()
+#        while block && func(block, block._id) != false
+#          block = @getBlock block.next
+#        null
+#      indexBlocks: ->
+#        @checkChanges()
+#        items = []
+#        @eachBlock (block)=> items.push indexNode block
+#        @setIndex @newBlockIndex items
+#      splitBlockIndexOnId: (id)-> @blockIndex.split (m)-> m.ids.contains id
+#      splitBlockIndexOnOffset: (offset)-> @blockIndex.split (m)-> m.length > offset
+#      indexBlock: (block)-> if block
+#        @checkChanges()
+#        # if the block is indexed, it might be an easy case, otherwise unindex it
+#        [first, rest] = @splitBlockIndexOnId block._id
+#        if !rest.isEmpty() && rest.peekFirst().id == block._id &&
+#          (next = rest.removeFirst()) &&
+#          (if next.isEmpty() then !block.next else next.peekFirst().id == block.next) &&
+#          (if first.isEmpty() then !block.prev else first.peekLast().id == block.prev)
+#            return @setIndex first.addLast(indexNode block).concat next
+#        if !rest.isEmpty() then @unindexBlock block._id
+#        # if next is followed by prev, just insert the block in between
+#        if (split = @fingerNodeOrder(block.prev, block.next)) && _.isArray split
+#          [first, rest] = split
+#          return @setIndex first.addLast(indexNode block).concat rest
+#        # repair as much of the index as possible and insert the block
+#        @insertAndRepairIndex block
+#      fingerNode: (id)->
+#        id && (node = @splitBlockIndexOnId(id)[1].peekFirst()) && node.id == id && node
+#      fingerNodeOrder: (a, b)->
+#        return !(a || b) ||
+#        if !a && b then @fingerNode b
+#        else if !b && a then @fingerNode a
+#        else
+#          [first, rest] = split = @splitBlockIndexOnId b
+#          !first.isEmpty() && !rest.isEmpty() && rest.peekFirst()?.id == b && first.peekLast()?.id == a && split
+#      # insert block into the index
+#      # then trace forwards and backwards, repairing along the way
+#      insertAndRepairIndex: (block)->
+#        console.warn "REPAIR"
+#        node = indexNode block
+#        if block.next
+#          prev = @getBlock block.prev
+#          if !block.prev
+#            @setIndex @blockIndex.addFirst indexNode block
+#          else
+#            [first, rest] = @splitBlockIndexOnId block.next
+#            @setIndex first.addLast(node).concat rest
+#        else if block.prev
+#          [first, rest] = @splitBlockIndexOnId block.prev
+#          @setIndex first.addLast(node).concat rest
+#        else @setIndex @newBlockIndex [node]
+#        mark = block
+#        cur = @getBlock block.next
+#        while cur && !@fingerNodeOrder mark._id, cur._id
+#          @unindexBlock cur._id
+#          [first, rest] = @splitBlockIndexOnId mark._id
+#          @setIndex insertAfterSplit first, indexNode(cur), rest
+#          mark = cur
+#          cur = @getBlock cur.next
+#        mark = block
+#        cur = @getBlock block.prev
+#        while cur && !@fingerNodeOrder cur._id, mark._id
+#          @unindexBlock cur._id
+#          [first, rest] = @splitBlockIndexOnId mark._id
+#          @setIndex insertInSplit first, indexNode(cur), rest
+#          mark = cur
+#          cur = @getBlock cur.prev
+#      unindexBlock: (id)->
+#        @checkChanges()
+#        if id
+#          [first, rest] = @splitBlockIndexOnId id
+#          if rest.peekFirst()?.id == id
+#            @setIndex first.concat rest.removeFirst()
+#
+#`docOffsetForBlockOffset(args...) -> offset`: args can be a blockOffset or block, offset
+#
+#      docOffsetForBlockOffset: (block, offset)->
+#        if typeof block == 'object'
+#          offset = block.offset
+#          block = block.block
+#        @offsetForBlock(block) + offset
+#      blockOffsetForDocOffset: (offset)->
+#        results = @splitBlockIndexOnOffset offset
+#        if !results[1].isEmpty()
+#          block: results[1].peekFirst().id
+#          offset: offset - results[0].measure().length
+#        else
+#          block: results[0].peekLast().id
+#          offset: results[0].removeLast().measure().length
+#      offsetForBlock: (blockOrId)->
+#        id = if typeof blockOrId == 'string' then blockOrId else blockOrId._id
+#        if @getBlock id then @splitBlockIndexOnId(id)[0].measure().length else 0
+#      blockForOffset: (offset)->
+#        results = @splitBlockIndexOnOffset offset
+#        (results[1]?.peekFirst() ? results[0].peekLast).id
+#      getDocLength: -> @blockIndex.measure().length
+#      getDocSubstring: (start, end)->
+#        startOffset = @blockOffsetForDocOffset start
+#        endOffset = @blockOffsetForDocOffset end
+#        block = @getBlock startOffset.block
+#        text = ''
+#        while block._id != endOffset.block
+#          text += block.text
+#          block = @getBlock block.next
+#        if startOffset.block == endOffset.block
+#          block.text.substring startOffset.offset, endOffset.offset
+#        else text.substring(startOffset.offset) + block.text.substring 0, endOffset.offset
+#
+#`getText(): -> string`: the text for the entire document
+#
+#      getText: ->
+#        text = ''
+#        @eachBlock (block)-> text += block.text
+#        text
+#      check: ->
+#        seen = {}
+#        first = next = @getFirst()
+#        prev = null
+#        while next
+#          prev = next
+#          if seen[next] then throw new Error "cycle in next links"
+#          seen[next] = true
+#          oldBl = bl
+#          bl = @getBlock next
+#          if !bl then throw new Error "Next of #{oldBl._id} doesn't exist"
+#          next = bl.next
+#        @eachBlock (block)->
+#          if block._id != first && !seen[block._id] then throw new Error "#{block._id} not in next chain"
+#        seen = {}
+#        lastBlock = prev
+#        while prev
+#          if seen[prev] then throw new Error "cycle in prev links"
+#          seen[prev] = true
+#          oldBl = bl
+#          bl = @getBlock prev
+#          if !bl then throw new Error "Prev of #{oldBl._id} doesn't exist"
+#          prev = bl.prev
+#        @eachBlock (block)->
+#          if block._id != lastBlock && !seen[block._id] then throw new Error "#{block._id} not in prev chain"
+#        null
+#      blockList: ->
+#        next = @getFirst()
+#        while next
+#          bl = @getBlock next
+#          next = bl.next
+#          bl
+#      change: (changes)-> @trigger 'change', @makeChange changes
+#      makeChange: ({first, sets, removes, oldBlocks, newBlocks})->
+#        @makeChanges =>
+#          {adds, updates, old} = result = {adds: {}, updates: {}, removes, old: {}, sets, oldFirst: @getFirst(), first: first, oldBlocks, newBlocks}
+#          @setFirst first
+#          for id of removes
+#            if bl = @getBlock id
+#              old[id] = bl
+#              @deleteBlock id
+#          for id, block of sets
+#            if bl = @getBlock id
+#              old[id] = bl
+#              updates[id] = block
+#            else adds[id] = block
+#            @setBlock id, block
+#          try
+#            @check()
+#          catch err
+#            console.log err
+#          result
+#      indexArray: -> treeToArray @blockIndex
+#      blockArray: ->
+#        blocks = []
+#        block = @getBlock @getFirst()
+#        while block
+#          blocks.push block
+#          block = @getBlock block.next
+#        blocks
+#      diag: -> @trigger 'diag', @verifyIndex()
+#      verifyIndex: ->
+#        iArray = @indexArray()
+#        treeIds = _.map iArray, _.property 'id'
+#        bArray = @blockArray()
+#        blockIds = _.map bArray, _.property '_id'
+#        if !_.isEqual treeIds, blockIds
+#          console.warn "INDEX ERROR:\nEXPECTED: #{JSON.stringify blockIds}\nBUT GOT: #{JSON.stringify treeIds}"
+#        last = null
+#        errs = new BlockErrors()
+#        for node in iArray
+#          if node.length != @getBlock(node.id)?.text.length
+#            errs.badId node.id, 'bad index length'
+#        offset = 0
+#        @eachBlock (block)=>
+#          last = block
+#          if !@fingerNodeOrder block.prev, block._id
+#            errs.badId block._id, 'bad order'
+#            console.warn "NODE ORDER WRONG FOR #{block.prev}, #{block._id}"
+#          if offset != @offsetForBlock block._id
+#            errs.badId block._id, "offset"
+#          if block.prev && @blockForOffset(offset - 1) != block.prev
+#            errs.badId block._id, "prev"
+#          if block.next && @blockForOffset(offset + block.text.length) != block.next
+#            errs.badId block._id, "next"
+#          offset += block.text.length
+#        errs.errors()
+#      blockOverlapsForReplacement: (start, end, text)->
+#        startBlock = @getBlock @blockForOffset(start)
+#        if !startBlock && start then startBlock = @getBlock @blockForOffset(start - 1)
+#        endBlock = @getBlock @blockForOffset end
+#        if !endBlock && end then endBlock = @getBlock @blockForOffset(end - 1)
+#        blocks = [startBlock]
+#        cur = startBlock
+#        while cur != endBlock && cur.next
+#          blocks.push cur = @getBlock cur.next
+#        fullText = blockText blocks
+#        offset = @offsetForBlock blocks[0]
+#        blocks: blocks
+#        blockText: fullText
+#        newText: fullText.substring(0, start - offset) + text + (fullText.substring end - offset)
+#
+#    class BlockErrors
+#      constructor: ->
+#        @order = []
+#        @ids = {}
+#      isEmpty: -> !@order.length
+#      badId: (id, msg)->
+#        if !@ids[id]
+#          @order.push id
+#          @ids[id] = msg
+#        else @ids[id] += ", #{msg}"
+#      errors: -> if !@isEmpty() then [id, "(#{@ids[id]})"] for id in @order
+#
+#    export treeToArray = (tree)->
+#      nodes = []
+#      while !tree.isEmpty()
+#        nodes.push tree.peekFirst()
+#        tree = tree.removeFirst()
+#      nodes
+#
+#    indexNode = (block)-> id: block._id, length: block.text.length
+#
+#    insertInSplit = (first, middle, rest)->
+#      if first.isEmpty() then rest.addFirst middle
+#      else if rest.isEmpty() then first.addLast middle
+#      else first.addLast(middle).concat rest
+#
+#    insertAfterSplit = (first, afterMiddle, rest)->
+#      next = rest.removeFirst().addFirst(afterMiddle)
+#      if first.isEmpty() then next.addFirst rest.peekFirst()
+#      else first.addLast(rest.peekFirst()).concat next
 
 DataStoreEditingOptions
 =======================
@@ -1720,9 +1738,9 @@ Utilities
       n = if n.nodeType == n.TEXT_NODE then n.parentNode else n
       n.isContentEditable
 
-    export link = (prev, next)->
-      prev.next = next._id
-      next.prev = prev._id
+#    export link = (prev, next)->
+#      prev.next = next._id
+#      next.prev = prev._id
 
     export blockText = (blocks)-> (block.text for block in blocks).join ''
 
@@ -1773,7 +1791,7 @@ adapted from Vega on [StackOverflow](http://stackoverflow.com/a/13127566/1026782
       else n.outerHTML
 
     export getEventChar = (e)->
-      if e.originalEvent.type == 'keypress' then String.fromCharCode eventChar e
+      if e.type == 'keypress' then String.fromCharCode eventChar e
       else
         c = (e.charCode || e.keyCode || e.which)
         shifton = e.shiftKey || !!(e.modifiers & 4)
@@ -1834,6 +1852,16 @@ selection, regardless of the current value of LeisureEditCore.editing.
 
     preservingSelection = null
 
+    validatePositions = ->
+      node = (if $(document.activeElement).is 'input[input-number]'
+        document.activeElement
+      else
+        getSelection().anchorNode)
+      if editor = (node && findEditor node)
+        result = editor.options.validatePositions()
+        if result
+          console.error("DISCREPENCY AT POSITION #{result.block._id}, #{result.offset}")
+
     export preserveSelection = (func)->
       if preservingSelection then func preservingSelection
       else if $(document.activeElement).is 'input[input-number]'
@@ -1848,6 +1876,7 @@ selection, regardless of the current value of LeisureEditCore.editing.
             scrollTop: 0
             scrollLeft: 0
         finally
+          setTimeout(validatePositions, 1)
           parent = $("##{parentId}")
           if input = parent.find("[input-number='#{num}']")
             input.selectionStart = start
@@ -1858,6 +1887,7 @@ selection, regardless of the current value of LeisureEditCore.editing.
         try
           func preservingSelection
         finally
+          setTimeout(validatePositions, 1)
           editor.selectDocRange preservingSelection
           preservingSelection = null
       else func

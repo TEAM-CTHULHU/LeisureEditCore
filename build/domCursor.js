@@ -536,7 +536,7 @@ export class DOMCursor {
     forwardChar() {
         let n = this;
         if (this.pos + 1 <= this.node.length)
-            this.newPos(this.node, this.pos + 1);
+            return this.newPos(this.node, this.pos + 1);
         while (!(n = n.next()).isEmpty()) {
             if (n.node.length !== 0)
                 break;

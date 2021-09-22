@@ -36,6 +36,9 @@ it in the editing options and options delegate it to the store.
       set$
     } = Editor
 
+    $ = Editor.$
+    #set$ $, (o)-> o instanceof $
+
     orgEditing = null
     plainEditing = null
     data = null
@@ -318,8 +321,6 @@ next sibling if there is one, otherwise it's the closest "right uncle" of this n
       if bad.length
         ' <span class="err">[' + ("#{err}: #{block[err]}" for err in bad).join(', ') + ']</span>'
       else ''
-
-    set$ $, (o)-> o instanceof $
 
     $(document).ready ->
       window.DATA = data = new OrgData()
