@@ -7,13 +7,14 @@
         "baseUrl": ".",
         "target": "es2020",
         "module": "es2020",
+        "moduleResolution": "node",
         "lib": ["es2020", "dom", "ScriptHost"],
         "allowSyntheticDefaultImports": true,
-        "outDir": "build",
         "rootDirs": [".", "build"]
     },
     "files": [
         "domCursor.ts",
-        "editor-ts.ts"
+        "editor-ts.ts",
+        "examples/main.ts"
     ]
 }

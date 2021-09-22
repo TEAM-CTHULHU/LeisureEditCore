@@ -1,20 +1,20 @@
 * Updating Lounge
-1. Rename project to Lounge
-2. Fix problems
-3. Write tests
-4. Gradually convert to Typescript (move from compiled JS to TS)
+1. Use [[https://rollupjs.org/guide/en/][Rollup]] for bundling (why: [[https://medium.com/@PepsRyuu/why-i-use-rollup-and-not-webpack-e3ab163f4fd3]])
+2. Rename project to Lounge
+3. Fix problems
+4. Write tests
+5. Gradually convert to Typescript (move from compiled JS to TS)
    1. [X] domCursor
    2. [-] editor
    3. [ ] fingertree
-5. Promote org-mode code so it's no longer "example" code
+6. Promote org-mode code so it's no longer "example" code
    1. Remove lazy from example
    2. Convert to Typescript
       1. [ ] docOrg
       2. [ ] example
       3. [ ] org
-6. Update annotations, so views can persist across state changes
+7. Update annotations, so views can persist across state changes
    1. Allows more practical embedding of Codemirror for src blocks
-7. Use [[https://rollupjs.org/guide/en/][Rollup]] for bundling ([[https://medium.com/@PepsRyuu/why-i-use-rollup-and-not-webpack-e3ab163f4fd3][why]])
 8. generalize rerendering to tree structure that allows documents
    1. Store already keeps clones so it is immutable at any given time
    2. parse document to create blocks

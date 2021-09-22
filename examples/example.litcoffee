@@ -5,7 +5,9 @@ it in the editing options and options delegate it to the store.
 
     import * as Org from './org.js'
     import * as DocOrg from './docOrg.js'
-    import * as Editor from '../build/editor.js'
+    import * as Editor from './editor.js'
+
+    export {Editor, Org, DocOrg}
 
     {
       parseOrgMode

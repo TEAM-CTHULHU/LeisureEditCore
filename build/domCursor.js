@@ -1,9 +1,11 @@
 // DOMCursor
 // =========
 // Copyright (C) 2014, 2021, Bill Burdick, Roy Riggs, TEAM CTHULHU
-if (!window.CaretPosition)
+if (!('CaretPosition' in window))
     window.CaretPosition = (class {
     });
+const mozdocument = document;
+const webkitdocument = document;
 export class DOMCursor {
     constructor(node, pos, filter) {
         if (pos instanceof Function)
@@ -208,9 +210,8 @@ export class DOMCursor {
     // **moveCaret** move the document selection to the current position
     moveCaret(r) {
         if (!this.isEmpty()) {
-            if (!r) {
+            if (!r)
                 r = document.createRange();
-            }
             r.setStart(this.node, this.pos);
             r.collapse(true);
             DOMCursor.selectRange(r);
@@ -647,12 +648,12 @@ export class DOMCursor {
     }
 }
 DOMCursor.debug = false;
-DOMCursor.caretPos = document.caretPositionFromPoint
+DOMCursor.caretPos = mozdocument.caretPositionFromPoint
     ? (x, y) => {
-        const pos = document.caretPositionFromPoint(x, y);
+        const pos = mozdocument.caretPositionFromPoint(x, y);
         return { node: pos.offsetNode, offset: pos.offset };
     } : (x, y) => {
-    const pos = document.caretRangeFromPoint(x, y);
+    const pos = webkitdocument.caretRangeFromPoint(x, y);
     return { node: pos.startContainer, offset: pos.startOffset };
 };
 class EmptyDOMCursor extends DOMCursor {

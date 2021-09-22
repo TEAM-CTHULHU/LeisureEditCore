@@ -131,7 +131,7 @@ Create a LeisureEditCore object like this: `new LeisureEditCore editorElement, o
 convert text to a list of block objects (see below).  See
 BasicEditingOptions and DataStoreEditingOptions for more info.
 
-    import {Set} from './immutable-4.0.0-rc.15.js'
+    import {Set} from 'immutable'
     import {DOMCursor} from './domCursor.js'
     import {FingerTree} from './fingertree.js'
     import {Observable, BasicEditingOptionsNew, spaces, sameCharacter, computeNewStructure,

@@ -98,7 +98,19 @@ export type node = HTMLElement & {
 
 type filter = (n: DOMCursor)=> any
 
-if (!window.CaretPosition) (window as any).CaretPosition = (class {})
+export declare class CaretPosition {
+    offset: number
+    offsetNode: Node
+}
+
+if (!('CaretPosition' in window)) (window as any).CaretPosition = (class {})
+
+const mozdocument = document as Document & {
+    caretPositionFromPoint(x: number, y: number): CaretPosition
+}
+const webkitdocument = document as Document & {
+    caretRangeFromPoint(x: number, y: number): Range
+}
 
 export class DOMCursor {
     type: string
@@ -189,13 +201,13 @@ export class DOMCursor {
         return r1.compareBoundaryPoints(Range.START_TO_START, r2) === 0 && r1.compareBoundaryPoints(Range.END_TO_END, r2) === 0;
     }
 
-    static caretPos: ((x: number, y: number)=> {node: node, offset: number}) = document.caretPositionFromPoint
+    static caretPos: ((x: number, y: number)=> {node: node, offset: number}) = mozdocument.caretPositionFromPoint
         ? (x: number, y: number)=> {
-            const pos = document.caretPositionFromPoint(x, y)
+            const pos = mozdocument.caretPositionFromPoint(x, y)
 
             return {node: pos.offsetNode as node, offset: pos.offset}
         } : (x: number, y: number)=> {
-            const pos = document.caretRangeFromPoint(x, y)
+            const pos = webkitdocument.caretRangeFromPoint(x, y)
 
             return {node: pos.startContainer as node, offset: pos.startOffset}
         }
@@ -343,14 +355,12 @@ export class DOMCursor {
     // **moveCaret** move the document selection to the current position
     moveCaret(r: Range) {
         if (!this.isEmpty()) {
-            if (!r) {
-                r = document.createRange();
-            }
-            r.setStart(this.node, this.pos);
-            r.collapse(true);
-            DOMCursor.selectRange(r);
+            if (!r) r = document.createRange()
+            r.setStart(this.node, this.pos)
+            r.collapse(true)
+            DOMCursor.selectRange(r)
         }
-        return this;
+        return this
     }
 
     adjustForNewline() {
