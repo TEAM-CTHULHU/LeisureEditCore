@@ -6,7 +6,7 @@ export default {
     input: 'examples/main.ts',
     plugins: [typescript(), coffeescript(), resolve()],
     output: {
-        file: 'build/example-bundle.js',
+        file: 'dist/example-bundle.js',
         format: 'esm',
         inlineDynamicImports: true,
         interop: 'esModule',

@@ -1,7 +1,7 @@
 import {DOMCursor, node} from './domCursor.js'
 import type {CaretPosition} from './domCursor.js'
-import {useEvent, Editor, defaultBindings, last, preserveSelection} from './build/editor.js'
-import {FingerTree} from './build/fingertree.js'
+import {useEvent, Editor, defaultBindings, last, preserveSelection} from './dist/editor.js'
+import {FingerTree} from './dist/fingertree.js'
 import {Set} from 'immutable'
 
 declare const _: any

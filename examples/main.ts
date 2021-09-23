@@ -1,1 +1,1 @@
-export * from '../build/example.js'
+export * from '../dist/example.js'

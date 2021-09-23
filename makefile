@@ -1,16 +1,26 @@
 TS=domCursor.ts editor-ts.ts fingertree.d.ts examples/main.ts
-COFFEE=fingertree.coffee editor.litcoffee examples/docOrg.litcoffee examples/example.litcoffee examples/org.coffee
+COFFEE=fingertree.coffee editor.litcoffee org.coffee docOrg.litcoffee examples/example.litcoffee
+JSFILES=$(addprefix dist/, $(addsuffix .js, $(notdir $(basename $(COFFEE)))))
+MAPFILES=$(addsuffix .map, $(JSFILES))
+OUTPUT=dist/example-bundle.js
+LIBS=lib/lazy.js
+LIBOUT=$(addprefix dist/, $(notdir $(LIBS)))
 
-dev: FORCE
-	rollup --config rollup-config-example.ts --configPlugin typescript
+example: $(OUTPUT)
 
-example: build/example-bundle.js
-
-build: build/lounge.js
-
-build/example-bundle.js: $(COFFEE) $(TS)
-	cp examples/lazy.js build
-	coffee -bcm -o build $(COFFEE)
+$(OUTPUT): $(COFFEE) $(TS) $(LIBOUT)
+	coffee -bcm -o dist $(COFFEE)
 	rollup --config rollup-example.config.ts --configPlugin typescript
+	$(MAKE) clean-coffee
+
+$(LIBOUT): $(LIBS)
+	mkdir -p dist
+	cp $? dist
+
+clean: FORCE
+	rm -rf dist
+
+clean-coffee: FORCE
+	rm -f $(JSFILES) $(MAPFILES) $(LIBOUT)
 
 FORCE:

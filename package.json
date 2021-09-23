@@ -6,6 +6,7 @@
     "@rollup/plugin-babel": "^5.3.0",
     "@rollup/plugin-node-resolve": "^13.0.5",
     "immutable": "^4.0.0-rc.15",
+    "lodash": "^4.17.21",
     "rollup-plugin-coffee-script": "^2.0.0"
   }
 }
